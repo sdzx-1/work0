@@ -1,0 +1,41 @@
+
+
+var a = 1;
+var b = 2;
+var c = 0;
+var e = "ndoeAStart" ;
+
+
+var add = function (a1,b1) {
+  return(a1 + b1)
+};
+
+var fib = function(a,b,max){
+    logger(a);
+    if (max < b)
+     { 
+       return(a)
+     }
+    else 
+    {
+     var c = a + b;
+     a = b;
+     b = c;
+     fib(a,b,max)
+     }
+
+};
+
+-- for (var i = 0; i < 10; i= i + 1) {
+--   logger(a);
+--   logger(a < i);
+--   c = add(i,c)
+-- };
+
+-- fib(1,1,7);
+
+var handler = function(a){
+    logger("input",a);
+    return(fib(1,1,a + 100))
+}
+
