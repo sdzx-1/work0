@@ -15,6 +15,7 @@ import Control.Effect.Graph
 import Control.Effect.Labelled
 import Control.Effect.State.Labelled (HasLabelled)
 import Control.Monad
+import Data.Either
 import Data.Graph.Inductive (Gr)
 import Data.Graph.Inductive.Dot
 import Graph (tmain)
@@ -28,7 +29,7 @@ data ErrorType
   deriving (Show)
 
 parse :: (Has (Error ErrorType) sig m, Read a) => String -> m a
-parse a = maybe (throwError $ ArgsParseError a) return $ readMaybe a
+parse a = either (throwError . ArgsParseError . ((a ++ " ") ++)) return $ readEither a
 
 eval' ::
   ( Has (Lift IO :+: Error ErrorType) sig m,
@@ -47,6 +48,8 @@ eval' l = do
     ["+a", i] -> parse i >>= flip replicateM (fresh >>= \i -> insNode (i, i)) >> eval' "show"
     "+a" : _ -> fresh >>= \i -> insNode (i, i) >> eval' "show"
     ["+e", s, t] -> (,,1) <$> parse s <*> parse t >>= insEdge >> eval' "show"
+    [s, "->", t, m] -> (,,) <$> parse s <*> parse t <*> parse m >>= insEdge >> eval' "show"
+    [s, "->", t] -> (,,1) <$> parse s <*> parse t >>= insEdge >> eval' "show"
     "+e" : s : t : m : _ -> (,,) <$> parse s <*> parse t <*> parse m >>= insEdge >> eval' "show"
     "finish" : _ -> throwError Finish
     _ -> sendIO $ print "unsport command"
