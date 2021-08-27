@@ -99,8 +99,13 @@ data HandlerState = HandlerState
 makeLenses ''HandlerState
 makeLenses ''GlobalState
 
-initGlobalState :: Has (State GlobalState) sig m => Gr String () -> m ()
-initGlobalState = undefined
+initGlobalState :: GlobalState
+initGlobalState =
+  GlobalState
+    { _graph = mkGraph [] [],
+      _evalList = [],
+      _handlersState = Map.empty
+    }
 
 defaultExpr = Elit (LitNum 10)
 
@@ -143,9 +148,15 @@ insertNameNodeEdgeExpr name code nodeid edges = do
   --   assert  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
   sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
   --  3.2 find all source nodeid IORef
-  inputs <- forM edges' $ \(sourceNodeid, _) -> do
-    hss <- use handlersState
-    maybe (error "nodeid Not find") (return . _output) (Map.lookup sourceNodeid hss)
+  inputs <-
+    if Prelude.null edges' -- source node , get a input
+      then do
+        ref <- sendIO $ newIORef defaultExpr
+        return [ref]
+      else do
+        forM edges' $ \(sourceNodeid, _) -> do
+          hss <- use handlersState
+          maybe (error "nodeid Not find") (return . _output) (Map.lookup sourceNodeid hss)
 
   -- make HandlerState
   let hs =
@@ -203,3 +214,40 @@ evalGraph' = do
     -- update global state
     handlersState %= Map.insert i newhs
     sendIO $ print $ "------node" ++ show i ++ " finish-----"
+
+start :: IO ()
+start = do
+  chan <- newChan
+
+  --   dis <- listDirectory "work"
+  --   let names = Prelude.map ("work/" ++) $ L.sort dis
+  let names = ["work/s.txt", "work/s1.txt", "work/s2.txt", "work/s3.txt"]
+  [a, b, c, d] <- Prelude.map runCalc <$> mapM readFile names
+  let ls =
+        [ ("s1", a, 1, []), -- source
+          ("s2", b, 2, [(1, 1)]),
+          ("s4", d, 4, [(1, 1), (2, 2)]),
+          ("s3", c, 3, [(4, 1)])
+        ]
+  -- fork graph worker
+  forkIO $
+    void $
+      runM $
+        runState @GlobalState initGlobalState $ do
+          -- init
+          forM_ ls $ \(a, b, c, d) -> insertNameNodeEdgeExpr a b c d
+          g <- use graph
+          sendIO $ forkIO $ void $ tmain g
+          runGraph chan
+
+  let go i = do
+        print "write chan"
+        writeChan chan (Push (Elit (LitNum 40)))
+        -- when (i `mod` 5 == 0) (writeChan chan (PushByName "work/s1.txt" (Assignment (Name "count") (Elit (LitNum 0)))))
+        if i == 20
+          then writeChan chan Terminal
+          else do
+            threadDelay (10 ^ 6)
+            go (i + 1)
+  go 0
+  threadDelay (10^6)

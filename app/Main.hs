@@ -1,8 +1,8 @@
 module Main where
 
-import Eval
+import Graph
 
 main :: IO ()
 main = do
   putStrLn "start demo"
-  k
+  start
