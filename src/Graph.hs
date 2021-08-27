@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Graph where
 
 import B
@@ -6,6 +8,7 @@ import Control.Carrier.State.Strict as S
 import Control.Carrier.Store
 import Control.Concurrent
 import Control.Concurrent.Chan
+import Control.Effect.Optics
 import Control.Effect.State.Labelled
 import Control.Monad
 import Control.Monad.IO.Class
@@ -18,6 +21,7 @@ import qualified Data.List as L
 import Data.Map as Map
 import Data.Maybe
 import Name
+import Optics
 import System.Directory
 import System.Process
 import Type
