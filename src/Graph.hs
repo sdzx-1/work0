@@ -74,16 +74,20 @@ instance Show (IORef a) where
   show _ = "IORef"
 
 data GlobalState = GlobalState
-  { graph :: Gr String (),
-    evalList :: [String], -- topsort graph
-    handlersState :: Map String HandlerState
+  { _graph :: Gr String (),
+    _evalList :: [String], -- topsort graph
+    _handlersState :: Map String HandlerState
   }
   deriving (Show)
 
 data HandlerState = HanderState
-  { handlerEnv :: Map Name PAddr,
-    handlerStore :: IntMap (Maybe Expr),
-    inputs :: Inputs,
-    output :: Output
+  { _handlerEnv :: Map Name PAddr,
+    _handlerStore :: IntMap (Maybe Expr),
+    _inputs :: Inputs,
+    _output :: Output
   }
   deriving (Show)
+
+makeLenses ''HandlerState
+makeLenses ''GlobalState
+
