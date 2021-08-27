@@ -29,6 +29,7 @@ library
                    , Control.Carrier.Store
                    , Control.Carrier.Graph
                    , Control.Effect.Graph
+                   , InteractiveGraph
                    , Type
                    , Graph
     -- Modules included in this library but not exported.

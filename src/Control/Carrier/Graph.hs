@@ -45,4 +45,5 @@ instance forall sig m a b. Algebra sig m => Algebra (Graph a b :+: sig) (GraphC 
     L (Neighboors n) -> get @(Gr a b) >>= pure . (<$ ctx) . (flip G.neighbors n)
     L (Out n) -> get @(Gr a b) >>= pure . (<$ ctx) . (flip G.out n)
     L (Inn n) -> get @(Gr a b) >>= pure . (<$ ctx) . (flip G.inn n)
+    L GetGraph -> get @(Gr a b) >>= pure . (<$ ctx)
     R other -> alg (runGraphC . hdl) (R other) ctx

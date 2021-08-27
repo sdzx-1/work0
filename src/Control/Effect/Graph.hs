@@ -38,6 +38,7 @@ data Graph a b (m :: K.Type -> K.Type) k where
   Neighboors :: G.Node -> Graph a b m [G.Node]
   Out :: G.Node -> Graph a b m [G.LEdge b]
   Inn :: G.Node -> Graph a b m [G.LEdge b]
+  GetGraph :: Graph a b m (G.Gr a b)
 
 isEmpty :: HasLabelled Graph (Graph a b) sig m => m Bool
 isEmpty = sendLabelled @Graph IsEmpty
@@ -95,3 +96,6 @@ out g = sendLabelled @Graph (Out g)
 
 inn :: HasLabelled Graph (Graph a b) sig m => G.Node -> m [G.LEdge b]
 inn g = sendLabelled @Graph (Inn g)
+
+getGraph :: HasLabelled Graph (Graph a b) sig m => m (G.Gr a b)
+getGraph = sendLabelled @Graph (GetGraph)
