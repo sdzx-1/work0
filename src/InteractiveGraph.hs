@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
@@ -22,12 +23,12 @@ import Text.Read
 
 data ErrorType
   = Finish
-  | ArgsParseError
+  | ArgsParseError String
   | E2
   deriving (Show)
 
 parse :: (Has (Error ErrorType) sig m, Read a) => String -> m a
-parse a = maybe (throwError ArgsParseError) return $ readMaybe a
+parse a = maybe (throwError $ ArgsParseError a) return $ readMaybe a
 
 eval' ::
   ( Has (Lift IO :+: Error ErrorType) sig m,
@@ -58,7 +59,12 @@ run' ::
   m ()
 run' = do
   l <- sendIO getLine
-  eval' l
+  catchError @ErrorType
+    (eval' l)
+    ( \case
+        ArgsParseError s -> sendIO $ print $ "ArgsParseError: " ++ s
+        e -> throwError e
+    )
   run'
 
 runGraph :: IO (Gr Int Int, (Int, Either ErrorType ()))
