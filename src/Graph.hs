@@ -26,8 +26,8 @@ import System.Directory
 import System.Process
 import Type
 
--- >>> tmain t
--- mkGraph [(0,"s0"),(1,"s1"),(2,"s2"),(3,"s3"),(4,"s4"),(5,"s5"),(6,"s6"),(7,"s7")] [(0,1,()),(1,2,()),(1,3,()),(2,4,()),(3,5,()),(4,5,()),(5,6,()),(5,7,())]
+-- >>> tmain tv
+-- mkGraph [(0,"s0"),(1,"s1"),(2,"s2"),(3,"s3"),(4,"s4"),(5,"s5"),(6,"s6"),(7,"s7")] [(0,1,1),(1,2,1),(1,3,1),(2,4,1),(2,5,3),(3,5,2),(4,5,1),(5,6,1),(5,7,1)]
 tmain :: (Show a, Show b, Graph gr) => gr a b -> IO (gr a b)
 tmain a = do
   let graph = a
@@ -37,7 +37,7 @@ tmain a = do
   system "eog file.png"
   return a
 
-g :: Gr String ()
+g :: Gr String Int
 g =
   mkGraph
     [ (0, "s0"),
@@ -48,21 +48,21 @@ g =
       (5, "s5"),
       (6, "s6")
     ]
-    $ labUEdges
-      [ (0, 1),
-        (1, 2),
-        (1, 3),
-        (3, 5),
-        (2, 4),
-        (4, 5),
-        (5, 6)
-      ]
+    [ (0, 1, 1),
+      (1, 2, 1),
+      (1, 3, 1),
+      (3, 5, 2),
+      (2, 4, 1),
+      (4, 5, 1),
+      (5, 6, 1),
+      (2, 5, 3)
+    ]
 
 -- >>> t
 -- mkGraph [(0,"s0"),(1,"s1"),(2,"s2"),(3,"s3"),(4,"s4"),(5,"s5"),(6,"s6"),(7,"s7")] [(0,1,()),(1,2,()),(1,3,()),(2,4,()),(3,5,()),(4,5,()),(5,6,())]
-t =
+tv =
   let k = topsort' g
-      k1 = insEdge (5, 7, ()) $ insNode (7, "s7") g
+      k1 = insEdge (5, 7, 1) $ insNode (7, "s7") g
       k2 = topsort' g
    in k1
 
@@ -74,7 +74,7 @@ instance Show (IORef a) where
   show _ = "IORef"
 
 data GlobalState = GlobalState
-  { _graph :: Gr String (),
+  { _graph :: Gr String Int,
     _evalList :: [String], -- topsort graph
     _handlersState :: Map String HandlerState
   }
@@ -91,3 +91,10 @@ data HandlerState = HanderState
 makeLenses ''HandlerState
 makeLenses ''GlobalState
 
+initGlobalState :: Has (State GlobalState) sig m => Gr String () -> m ()
+initGlobalState = undefined
+
+--- insert a node
+--- insert a edge of node
+--- name
+--- Expr  get handler , get args, match args with parent's node, get args --- parens't output IORef
