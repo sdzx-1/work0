@@ -27,6 +27,7 @@ library
                    , Control.Effect.Store
                    , Control.Effect.Env
                    , Control.Carrier.Store
+                   , Control.Carrier.Graph
                    , Control.Effect.Graph
                    , Type
                    , Graph
