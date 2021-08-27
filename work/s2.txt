@@ -2,6 +2,9 @@
 
 
 var handler = function(a){
+  for(var i = 0; i < 100; i = i + 1 ){
+  logger(random(1,10))
+  };
     return(1000 + a)
 }
 
