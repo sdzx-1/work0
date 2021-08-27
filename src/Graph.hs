@@ -1,4 +1,7 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Graph where
@@ -26,7 +29,7 @@ import Data.Maybe
 import qualified Eval
 import GHC.IOArray (newIOArray)
 import Name
-import Optics (makeLenses)
+import Optics (makeLenses, (^.))
 import System.Directory
 import System.Process
 import Type
@@ -154,3 +157,49 @@ insertNameNodeEdgeExpr name code nodeid edges = do
           }
   handlersState %= Map.insert nodeid hs
 
+data Command
+  = Push Expr
+  | Terminal
+  deriving (Show)
+
+runGraph :: Has (State GlobalState :+: Lift IO) sig m => Chan Command -> m ()
+runGraph chan =
+  sendIO (readChan chan) >>= \case
+    Terminal -> do
+      s <- S.get @GlobalState
+      sendIO $ do
+        print "----------------------GlobaseState----------------------"
+        print s
+        print "--------------------------------------------------------"
+    Push e -> evalGraph e >> runGraph chan
+
+evalGraph :: Has (State GlobalState :+: Lift IO) sig m => Expr -> m ()
+evalGraph e = do
+  elist <- use evalList
+  uses handlersState (_inputs . fromMaybe (error "null list") . Map.lookup (head elist)) >>= \case
+    [input] -> sendIO $ writeIORef input e
+    _ -> error "not support m source"
+  evalGraph'
+
+evalGraph' :: Has (State GlobalState :+: Lift IO) sig m => m ()
+evalGraph' = do
+  elist <- use evalList
+  forM_ elist $ \i -> do
+    sendIO $ print $ "------node" ++ show i ++ " start------"
+    hs <- uses handlersState (fromMaybe (error "node not fing") . Map.lookup i)
+    -- get all inputs
+    inputs <- sendIO $ mapM readIORef (hs ^. inputs)
+    -- eval node code
+    (a, b, c) <-
+      sendIO $
+        Eval.runEval'
+          (hs ^. handlerEnv)
+          (hs ^. handlerStore)
+          (AppFun (Elit $ LitSymbol "handler") inputs)
+    -- write output
+    sendIO $ writeIORef (hs ^. output) c
+    -- update HandlerState
+    let newhs = hs {_handlerEnv = b, _handlerStore = a}
+    -- update global state
+    handlersState %= Map.insert i newhs
+    sendIO $ print $ "------node" ++ show i ++ " finish-----"
