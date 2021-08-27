@@ -27,6 +27,7 @@ library
                    , Control.Effect.Store
                    , Control.Effect.Env
                    , Control.Carrier.Store
+                   , Control.Effect.Graph
                    , Type
                    , Graph
     -- Modules included in this library but not exported.
