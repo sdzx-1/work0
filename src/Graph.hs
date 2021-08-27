@@ -7,7 +7,7 @@ import B
 import Control.Algebra
 import Control.Carrier.Lift
 import Control.Carrier.State.Strict as S
-import Control.Carrier.Store
+import Control.Carrier.Store hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Effect.Optics
@@ -26,7 +26,7 @@ import Data.Maybe
 import qualified Eval
 import GHC.IOArray (newIOArray)
 import Name
-import Optics
+import Optics (makeLenses)
 import System.Directory
 import System.Process
 import Type
@@ -68,7 +68,7 @@ g =
 tv =
   let k = topsort' g
       k1 = insEdge (5, 7, 1) $ insNode (7, "s7") g
-      k2 = topsort' g
+      k2 = topsort g
    in k1
 
 type Inputs = [IORef Expr]
@@ -80,8 +80,8 @@ instance Show (IORef a) where
 
 data GlobalState = GlobalState
   { _graph :: Gr String Int,
-    _evalList :: [String], -- topsort graph
-    _handlersState :: Map String HandlerState
+    _evalList :: [Int], -- topsort graph
+    _handlersState :: Map Int HandlerState
   }
   deriving (Show)
 
@@ -125,13 +125,17 @@ insertNameNodeEdgeExpr name code node@(nodeid, _) edges = do
   graph %= insNode node
   -- 2. insert edges
   graph %= insEdges (fmap (\(a, b) -> (a, nodeid, b)) edges)
+  -- 2.1 update evalList
+  -- get new graph
+  newGraph <- use graph
+  -- update evalList
+  evalList .= topsort newGraph
   -- 3. finds all source output IORef as Inputs
-  -- 3.1 sort edges by args position  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
+  -- 3.1 sort edges by args position  (5,2) (7,3) (9,1) -> (9,1) (5,2) (7,3)
   let edges' = L.sortBy (\(_, a) (_, b) -> compare a b) edges
   --   assert  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
   sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
   -- TODO 3.2 find source nodeid IORef
-
 
   undefined
 
