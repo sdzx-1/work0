@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Graph where
 
 import B
+import Control.Algebra
 import Control.Carrier.Lift
 import Control.Carrier.State.Strict as S
 import Control.Carrier.Store
@@ -10,6 +12,7 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Effect.Optics
 import Control.Effect.State.Labelled
+import Control.Exception.Base (assert)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Graph.Inductive
@@ -20,6 +23,8 @@ import Data.IntMap as IntMap
 import qualified Data.List as L
 import Data.Map as Map
 import Data.Maybe
+import qualified Eval
+import GHC.IOArray (newIOArray)
 import Name
 import Optics
 import System.Directory
@@ -93,6 +98,42 @@ makeLenses ''GlobalState
 
 initGlobalState :: Has (State GlobalState) sig m => Gr String () -> m ()
 initGlobalState = undefined
+
+defaultExpr = Elit (LitNum 10)
+
+insertNameNodeEdgeExpr ::
+  Has (State GlobalState :+: Lift IO) sig m =>
+  String -> -- name
+  Expr -> -- expr
+  (Int, String) -> -- (nodeid, name)
+  [(Int, Int)] -> -- (sourceNodeid, edge number label as args position)
+  m ()
+insertNameNodeEdgeExpr name code node@(nodeid, _) edges = do
+  -- init code
+  let m = Map.empty
+      im = IntMap.empty
+  (a, b, _) <- sendIO $ Eval.runEval' m im (Eval.init' code)
+  -- create HandlerState, env and store ready
+
+  -- create Output
+  outputRef <- sendIO $ newIORef defaultExpr
+
+  -- TODO: check handler args match to egdes's length
+
+  -- create Inputs
+  -- 1. insert node
+  graph %= insNode node
+  -- 2. insert edges
+  graph %= insEdges (fmap (\(a, b) -> (a, nodeid, b)) edges)
+  -- 3. finds all source output IORef as Inputs
+  -- 3.1 sort edges by args position  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
+  let edges' = L.sortBy (\(_, a) (_, b) -> compare a b) edges
+  --   assert  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
+  sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
+  -- TODO 3.2 find source nodeid IORef
+
+
+  undefined
 
 --- insert a node
 --- insert a edge of node
