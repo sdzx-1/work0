@@ -1,16 +1,8 @@
 
 
-var count = 0;
-
-var add = function (a1,b1) {
-  logger(a1+b1);
-  return(a1 + b1)
-};
-
-
 var handler = function(a,b){
-    count = count + 1;
-    logger(count);
-    return(add(a,b))
+    logger(a + b);
+    logger(random(a,b));
+    return(a + b)
 }
 

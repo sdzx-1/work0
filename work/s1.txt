@@ -3,7 +3,6 @@
 var count = 0;
 
 var add = function (a1,b1) {
-  logger(a1+b1);
   return(a1 + b1)
 };
 
@@ -11,6 +10,6 @@ var add = function (a1,b1) {
 var handler = function(a){
     count = count + 1;
     logger(count);
-    return(add(100,a))
+    return(add(100000,a))
 }
 

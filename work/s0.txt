@@ -26,16 +26,8 @@ var fib = function(a,b,max){
 
 };
 
--- for (var i = 0; i < 10; i= i + 1) {
---   logger(a);
---   logger(a < i);
---   c = add(i,c)
--- };
-
--- fib(1,1,7);
 
 var handler = function(a){
-    logger("input",a);
-    return(fib(1,1,a + 100))
+    return(fib(1,1,a))
 }
 

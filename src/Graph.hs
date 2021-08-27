@@ -213,7 +213,8 @@ evalGraph' = do
     let newhs = hs {_handlerEnv = b, _handlerStore = a}
     -- update global state
     handlersState %= Map.insert i newhs
-    sendIO $ print $ "------node" ++ show i ++ " finish-----"
+
+-- sendIO $ print $ "------node" ++ show i ++ " finish-----"
 
 start :: IO ()
 start = do
@@ -221,13 +222,13 @@ start = do
 
   --   dis <- listDirectory "work"
   --   let names = Prelude.map ("work/" ++) $ L.sort dis
-  let names = ["work/s.txt", "work/s1.txt", "work/s2.txt", "work/s3.txt"]
-  [a, b, c, d] <- Prelude.map runCalc <$> mapM readFile names
+  let names = ["work/s0.txt", "work/s1.txt", "work/s2.txt", "work/s3.txt"]
+  [s0, s1, s2, s3] <- Prelude.map runCalc <$> mapM readFile names
   let ls =
-        [ ("s1", a, 1, []), -- source
-          ("s2", b, 2, [(1, 1)]),
-          ("s4", d, 4, [(1, 1), (2, 2)]),
-          ("s3", c, 3, [(4, 1)])
+        [ ("s0", s0, 0, []), -- source
+          ("s1", s1, 1, [(0, 1)]),
+          ("s2", s2, 2, [(0, 1)]),
+          ("s3", s3, 3, [(1, 1), (2, 2)])
         ]
   -- fork graph worker
   forkIO $
@@ -250,4 +251,4 @@ start = do
             threadDelay (10 ^ 6)
             go (i + 1)
   go 0
-  threadDelay (10^6)
+  threadDelay (10 ^ 6)

@@ -20,6 +20,7 @@ import Data.Map as Map
 import Data.Maybe
 import Name
 import System.Directory
+import System.Random
 import Type
 
 evaLit ::
@@ -89,6 +90,7 @@ evalExpr = \case
     return e'
   BuildInFunction f -> return (BuildInFunction f)
 
+runEval :: Expr -> IO (PStore Expr, (Map Name PAddr, Expr))
 runEval expr =
   runM @IO
     . runStore
@@ -106,6 +108,12 @@ less ls = return $ Left $ LessTypeError ls
 logger :: [Expr] -> IO (Either EvalError Expr)
 logger ls = print ls >> return (Right (head ls))
 
+random' :: [Expr] -> IO (Either EvalError Expr)
+random' [Elit (LitNum b1), Elit (LitNum b2)] = do
+  v <- randomRIO (b1, b2)
+  return $ Right $ Elit $ LitNum v
+random' ls = return $ Left $ LessTypeError ls
+
 -- >>> runEval t
 --  lit: LitSymbol (Name "<")
 init' :: Expr -> Expr
@@ -113,7 +121,8 @@ init' e =
   Exprs $
     [ Var "+" $ BuildInFunction add,
       Var "<" $ BuildInFunction less,
-      Var "logger" $ BuildInFunction logger
+      Var "logger" $ BuildInFunction logger,
+      Var "random" $ BuildInFunction random'
     ]
       ++ [e]
 
