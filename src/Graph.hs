@@ -85,7 +85,7 @@ data GlobalState = GlobalState
   }
   deriving (Show)
 
-data HandlerState = HanderState
+data HandlerState = HandlerState
   { _handlerEnv :: Map Name PAddr,
     _handlerStore :: IntMap (Maybe Expr),
     _inputs :: Inputs,
@@ -101,14 +101,18 @@ initGlobalState = undefined
 
 defaultExpr = Elit (LitNum 10)
 
+--- insert a node
+--- insert a edge of node
+--- name
+--- Expr  get handler , get args, match args with parent's node, get args --- parens't output IORef
 insertNameNodeEdgeExpr ::
   Has (State GlobalState :+: Lift IO) sig m =>
   String -> -- name
   Expr -> -- expr
-  (Int, String) -> -- (nodeid, name)
+  Int -> -- nodeid
   [(Int, Int)] -> -- (sourceNodeid, edge number label as args position)
   m ()
-insertNameNodeEdgeExpr name code node@(nodeid, _) edges = do
+insertNameNodeEdgeExpr name code nodeid edges = do
   -- init code
   let m = Map.empty
       im = IntMap.empty
@@ -122,7 +126,7 @@ insertNameNodeEdgeExpr name code node@(nodeid, _) edges = do
 
   -- create Inputs
   -- 1. insert node
-  graph %= insNode node
+  graph %= insNode (nodeid, name)
   -- 2. insert edges
   graph %= insEdges (fmap (\(a, b) -> (a, nodeid, b)) edges)
   -- 2.1 update evalList
@@ -135,11 +139,18 @@ insertNameNodeEdgeExpr name code node@(nodeid, _) edges = do
   let edges' = L.sortBy (\(_, a) (_, b) -> compare a b) edges
   --   assert  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
   sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
-  -- TODO 3.2 find source nodeid IORef
+  --  3.2 find all source nodeid IORef
+  inputs <- forM edges' $ \(sourceNodeid, _) -> do
+    hss <- use handlersState
+    maybe (error "nodeid Not find") (return . _output) (Map.lookup sourceNodeid hss)
 
-  undefined
+  -- make HandlerState
+  let hs =
+        HandlerState
+          { _handlerEnv = b,
+            _handlerStore = a,
+            _inputs = inputs,
+            _output = outputRef
+          }
+  handlersState %= Map.insert nodeid hs
 
---- insert a node
---- insert a edge of node
---- name
---- Expr  get handler , get args, match args with parent's node, get args --- parens't output IORef
