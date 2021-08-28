@@ -89,6 +89,7 @@ evalExpr = \case
     maybe (error (show name)) (.= e') a
     return e'
   BuildInFunction f -> return (BuildInFunction f)
+  Skip -> return Skip
 
 runEval :: Expr -> IO (PStore Expr, (Map Name PAddr, Expr))
 runEval expr =

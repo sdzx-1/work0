@@ -37,6 +37,7 @@ data Expr
   | AppFun Expr [Expr]   -- functi on App
   | Assignment Name Expr  -- "a = 1"
   | BuildInFunction ([Expr] -> IO (Either EvalError Expr))
+  | Skip  -- if any args is Skip, then skip next cal , write result to Skip
 {- ORMOLU_ENABLE -}
 
 data EvalError
@@ -60,6 +61,7 @@ instance Show Expr where
   show (AppFun e args) = " AppFun: " ++ show e ++ show args
   show (Assignment name e) = " " ++ show name ++ " = " ++ show e
   show (IfElse a b c) = "if: " ++ show a ++ show b ++ show c
+  show Skip = "skip: "
 -- >>> snd <$> runEval t
 -- Right  lit: LitNum 55.0
 t =
