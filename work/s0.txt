@@ -28,6 +28,10 @@ function fib(a,b,max){
 
 
 function handler(a){
+  if (a < 10) {
     return(fib(1,1,a));
+  } else {
+    skip();
+  }
 };
 

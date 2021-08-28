@@ -40,6 +40,10 @@ data Expr
   | Skip  -- if any args is Skip, then skip next cal , write result to Skip
 {- ORMOLU_ENABLE -}
 
+skip :: Expr -> Bool 
+skip Skip = True 
+skip _ = False
+
 data EvalError
   = SymbolNotFind
   | ArgsNotMatch

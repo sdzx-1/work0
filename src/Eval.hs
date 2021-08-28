@@ -115,6 +115,9 @@ random' [Elit (LitNum b1), Elit (LitNum b2)] = do
   return $ Right $ Elit $ LitNum v
 random' ls = return $ Left $ LessTypeError ls
 
+skip' :: [Expr] -> IO (Either EvalError Expr)
+skip' _ = return (Right Skip)
+
 -- >>> runEval t
 --  lit: LitSymbol (Name "<")
 init' :: Expr -> Expr
@@ -123,7 +126,8 @@ init' e =
     [ Var "+" $ BuildInFunction add,
       Var "<" $ BuildInFunction less,
       Var "logger" $ BuildInFunction logger,
-      Var "random" $ BuildInFunction random'
+      Var "random" $ BuildInFunction random',
+      Var "skip" $ BuildInFunction skip'
     ]
       ++ [e]
 

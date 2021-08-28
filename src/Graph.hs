@@ -196,23 +196,26 @@ evalGraph' :: Has (State GlobalState :+: Lift IO) sig m => m ()
 evalGraph' = do
   elist <- use evalList
   forM_ elist $ \i -> do
-    sendIO $ print $ "------node" ++ show i ++ " start------"
     hs <- uses handlersState (fromMaybe (error "node not fing") . Map.lookup i)
     -- get all inputs
     inputs <- sendIO $ mapM readIORef (hs ^. inputs)
-    -- eval node code
-    (a, b, c) <-
-      sendIO $
-        Eval.runEval'
-          (hs ^. handlerEnv)
-          (hs ^. handlerStore)
-          (AppFun (Elit $ LitSymbol "handler") inputs)
-    -- write output
-    sendIO $ writeIORef (hs ^. output) c
-    -- update HandlerState
-    let newhs = hs {_handlerEnv = b, _handlerStore = a}
-    -- update global state
-    handlersState %= Map.insert i newhs
+    if any skip inputs
+      then sendIO $ writeIORef (hs ^. output) Skip
+      else do
+        sendIO $ print $ "------node" ++ show i ++ " start------"
+        -- eval node code
+        (a, b, c) <-
+          sendIO $
+            Eval.runEval'
+              (hs ^. handlerEnv)
+              (hs ^. handlerStore)
+              (AppFun (Elit $ LitSymbol "handler") inputs)
+        -- write output
+        sendIO $ writeIORef (hs ^. output) c
+        -- update HandlerState
+        let newhs = hs {_handlerEnv = b, _handlerStore = a}
+        -- update global state
+        handlersState %= Map.insert i newhs
 
 -- sendIO $ print $ "------node" ++ show i ++ " finish-----"
 
