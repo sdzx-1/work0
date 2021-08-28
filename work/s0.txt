@@ -21,13 +21,13 @@ function fib(a,b,max){
      var c = a + b;
      a = b;
      b = c;
-     fib(a,b,max)
+     fib(a,b,max);
      }
 
 };
 
 
 function handler(a){
-    return(fib(1,1,a))
-}
+    return(fib(1,1,a));
+};
 

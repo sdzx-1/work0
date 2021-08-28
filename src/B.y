@@ -40,6 +40,7 @@ sep(a, s) :: { [a] }
 sep1(a, s) :: { [a] }
   : a { [$1] }
   | sep1(a, s) s a { $3 :   $1 }
+  | sep1(a, s) s   { $1 }
 
 many(a) :: { [a] }
   : {- empty -} { []       }
