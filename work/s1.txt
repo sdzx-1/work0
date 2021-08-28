@@ -7,7 +7,7 @@ var add = function (a1,b1) {
 };
 
 
-var handler = function(a){
+function handler(a){
     count = count + 1;
     logger(count);
     return(add(100000,a))

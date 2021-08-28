@@ -6,11 +6,11 @@ var c = 0;
 var e = "ndoeAStart" ;
 
 
-var add = function (a1,b1) {
+function add(a1,b1) {
   return(a1 + b1)
 };
 
-var fib = function(a,b,max){
+function fib(a,b,max){
     logger(a);
     if (max < b)
      { 
@@ -27,7 +27,7 @@ var fib = function(a,b,max){
 };
 
 
-var handler = function(a){
+function handler(a){
     return(fib(1,1,a))
 }
 
