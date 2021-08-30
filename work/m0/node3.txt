@@ -1,4 +1,1 @@
-function handler(node1,node2){
- 
- 
-}
+{"code":"function handler(node1,node2){\n \n \n}","nodeId":3,"sourcesNodeId":[1,2]}

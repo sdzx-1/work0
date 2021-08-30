@@ -1,4 +1,1 @@
-function handler(node1){
- 
- 
-}
+{"code":"function handler(node1){\n \n \n}","nodeId":2,"sourcesNodeId":[1]}

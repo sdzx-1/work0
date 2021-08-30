@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
@@ -15,13 +17,18 @@ import Control.Effect.Graph
 import Control.Effect.Labelled
 import Control.Effect.State.Labelled (HasLabelled)
 import Control.Monad
+import Data.Aeson (FromJSON, ToJSON, encode)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import Data.Either
 import Data.Graph.Inductive (Gr)
 import Data.Graph.Inductive.Dot
 import qualified Data.List as L
+import GHC.Generics (Generic)
 import Graph (tmain)
 import System.Process
 import Text.Read
+import Control.Concurrent
 
 data ErrorType
   = Finish
@@ -34,10 +41,10 @@ parse a = either (throwError . ArgsParseError . ((a ++ " ") ++)) return $ readEi
 
 data Node a = Node
   { nodeId :: Int,
-    sourceNodeId :: [Int],
+    sourcesNodeId :: [Int],
     code :: a
   }
-  deriving (Show)
+  deriving (Show, Generic, FromJSON, ToJSON)
 
 helpCode :: [Int] -> String
 helpCode ls =
@@ -47,9 +54,8 @@ helpCode ls =
    in "function handler(" ++ k ++ "){\n \n \n}"
 
 eval' ::
-  ( Has (Lift IO :+: Error ErrorType) sig m,
-    HasLabelled Graph (Graph Int Int) sig m,
-    Has (Fresh) sig m
+  ( Has (Lift IO :+: Error ErrorType :+: Fresh) sig m,
+    HasLabelled Graph (Graph Int Int) sig m
   ) =>
   String ->
   m ()
@@ -68,8 +74,13 @@ eval' l = do
         insEdge (s, nodeId, i)
       eval' "show"
       sendIO $ do
-        writeFile ("work/m0/node" ++ show nodeId ++ ".txt") (helpCode ls')
-        void $ system ("gedit work/m0/node" ++ show nodeId ++ ".txt")
+        let node =
+              Node
+                { nodeId = nodeId,
+                  sourcesNodeId = ls',
+                  code = helpCode ls'
+                }
+        sendIO $ B.writeFile ("work/m0/node" ++ show nodeId ++ ".txt") (BL.toStrict $ encode node)
     ["+a", i] -> parse i >>= flip replicateM (fresh >>= \i -> insNode (i, i)) >> eval' "show"
     "+a" : _ -> fresh >>= \i -> insNode (i, i) >> eval' "show"
     ["+e", s, t] -> (,,1) <$> parse s <*> parse t >>= insEdge >> eval' "show"
@@ -81,9 +92,8 @@ eval' l = do
     _ -> sendIO $ print "unsport command"
 
 run' ::
-  ( Has (Lift IO :+: Error ErrorType) sig m,
-    HasLabelled Graph (Graph Int Int) sig m,
-    Has (Fresh) sig m
+  ( Has (Lift IO :+: Error ErrorType :+: Fresh) sig m,
+    HasLabelled Graph (Graph Int Int) sig m
   ) =>
   m ()
 run' = do

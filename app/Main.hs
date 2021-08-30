@@ -1,8 +1,9 @@
 module Main where
 
-import Graph
+import InteractiveGraph
+import Control.Monad
 
 main :: IO ()
 main = do
   putStrLn "start demo"
-  start
+  void runGraph

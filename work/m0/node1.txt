@@ -1,4 +1,1 @@
-function handler(input){
- 
- 
-}
+{"code":"function handler(input){\n \n \n}","nodeId":1,"sourcesNodeId":[]}
