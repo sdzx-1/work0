@@ -1,0 +1,9 @@
+packages: .
+
+source-repository-package
+    type: git
+    location: https://github.com/EMQ-YangM/packages
+    tag: 4e88f0413a08d48e68199426df97413675b36a16
+    subdir: contra-tracer
+            io-classes
+            io-sim
