@@ -146,10 +146,8 @@ makeCanvas cfg state = widget
               & L.widget .~ makeCanvas cfg newState
           result = resultNode newNode
       Move p ->
-        let res =
-              let v = filter (inICCanvas (subPoint p origin)) (state ^. icCreatedNode)
-               in trace (show v) v
-         in Just $ resultNode $ node & L.widget .~ makeCanvas cfg (state & icSelected .~ res)
+        let res = filter (inICCanvas (subPoint p origin)) (state ^. icCreatedNode)
+         in Just $ resultReqs (node & L.widget .~ makeCanvas cfg (state & icSelected .~ res)) [RenderOnce]
       _ -> Nothing
       where
         vp = node ^. L.info . L.viewport
