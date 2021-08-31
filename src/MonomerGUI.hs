@@ -56,6 +56,7 @@ data CanvasState = CanvasState
   { _icStage :: Stage,
     _icCreatedNode :: [ICCanvas],
     _icSelected :: [ICCanvas],
+    _icMarked :: [ICCanvas],
     _icText :: Text
   }
   deriving (Eq, Show)
@@ -103,6 +104,7 @@ canvas_ configs = defaultWidgetNode "canvas" newWidget
         { _icStage = InteractiveCanvas,
           _icCreatedNode = [],
           _icSelected = [],
+          _icMarked = [],
           _icText = ""
         }
     newWidget = makeCanvas config state
@@ -136,19 +138,27 @@ makeCanvas cfg state = widget
             & L.widget .~ makeCanvas cfg oldState
         result = resultNode newNode
 
-    handleEvent wenv node target evt = case evt of
-      Click point button clicks -> Just result
-        where
-          newPoint = subPoint point origin
-          newState = state & icCreatedNode %~ (ICCricle newPoint globalRidaus :)
-          newNode =
-            node
-              & L.widget .~ makeCanvas cfg newState
-          result = resultNode newNode
-      Move p ->
-        let res = filter (inICCanvas (subPoint p origin)) (state ^. icCreatedNode)
-         in Just $ resultReqs (node & L.widget .~ makeCanvas cfg (state & icSelected .~ res)) [RenderOnce]
-      _ -> Nothing
+    handleEvent wenv node target evt =
+      case state ^. icSelected of
+        [] ->
+          case evt of
+            Click point button clicks -> Just result
+              where
+                newPoint = subPoint point origin
+                newState = state & icCreatedNode %~ (ICCricle newPoint globalRidaus :)
+                newNode =
+                  node
+                    & L.widget .~ makeCanvas cfg newState
+                result = resultNode newNode
+            Move p ->
+              let res = filter (inICCanvas (subPoint p origin)) (state ^. icCreatedNode)
+               in Just $ resultReqs (node & L.widget .~ makeCanvas cfg (state & icSelected .~ res)) [RenderOnce]
+            _ -> Nothing
+        [ic@ICCricle {}] ->
+          case evt of
+            Click point button clicks -> Just $ resultNode $ node & L.widget .~ makeCanvas cfg (state & icMarked %~ (ic :) & icSelected .~ [])
+            _ -> Nothing
+        _ -> Nothing
       where
         vp = node ^. L.info . L.viewport
         origin = Point (vp ^. L.x) (vp ^. L.y)
@@ -184,6 +194,18 @@ makeCanvas cfg state = widget
 
         forM_ (state ^. icSelected) $ \icc -> do
           setStrokeColor renderer yellow
+          setStrokeWidth renderer 3
+          beginPath renderer
+          -- renderLine renderer pointA pointB
+          -- renderRect renderer (Rect (_pX pointA) (_pY pointA) 40 30)
+          -- renderText renderer (icc ^. icPosition) def (FontSize 10) def (T.pack $ show $ icc ^. icPosition)
+          case icc of
+            ICCricle {..} -> renderArc renderer _icPosition globalRidaus 0 360 CW
+            _ -> return ()
+          stroke renderer
+
+        forM_ (state ^. icMarked) $ \icc -> do
+          setStrokeColor renderer blue
           setStrokeWidth renderer 3
           beginPath renderer
           -- renderLine renderer pointA pointB
