@@ -56,6 +56,8 @@ library
                    , bytestring
                    , monomer
                    , contra-tracer
+                   , data-default
+                   , lens
     hs-source-dirs:   src
     default-language: Haskell2010
     Build-tools: alex, happy

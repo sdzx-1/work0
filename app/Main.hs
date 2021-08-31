@@ -7,4 +7,4 @@ import MonomerGUI
 main :: IO ()
 main = do
   putStrLn "start demo"
-  tmain
+  main07

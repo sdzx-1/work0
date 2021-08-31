@@ -1,40 +1,168 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module MonomerGUI where
 
-import Data.Text (Text, pack)
+import Control.Concurrent (threadDelay)
+import Control.Lens
+import Control.Monad (forM_)
+import Data.Default
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Typeable (cast)
 import Monomer
-import Monomer.Core.WidgetTypes (WidgetEnv)
-import Optics
+import Monomer.Common.BasicTypes
+import qualified Monomer.Lens as L
+import Monomer.Widgets.Single
 
-newtype AppModel = AppModel
-  { _clickCount :: Int
+newtype CanvasCfg = CanvasCfg
+  { _canvasColors :: [Color]
   }
   deriving (Eq, Show)
 
+instance Default CanvasCfg where
+  def =
+    CanvasCfg
+      { _canvasColors = []
+      }
+
+instance Semigroup CanvasCfg where
+  (<>) c1 c2 =
+    CanvasCfg
+      { _canvasColors = _canvasColors c1 <> _canvasColors c2
+      }
+
+instance Monoid CanvasCfg where
+  mempty = def
+
+data CanvasMessage
+  = ResetCanvas
+  deriving (Eq, Show)
+
+newtype CanvasState = CanvasState
+  { _clickedPoints :: [Point]
+  }
+  deriving (Eq, Show)
+
+makeLenses 'CanvasCfg
+makeLenses 'CanvasState
+
+canvasColor :: Color -> CanvasCfg
+canvasColor col = def & canvasColors .~ [col]
+
+canvas :: WidgetNode s e
+canvas = canvas_ def
+
+canvas_ :: [CanvasCfg] -> WidgetNode s e
+canvas_ configs = defaultWidgetNode "canvas" newWidget
+  where
+    config = mconcat configs
+    state = CanvasState []
+    newWidget = makeCanvas config state
+
+makeCanvas :: CanvasCfg -> CanvasState -> Widget s e
+makeCanvas cfg state = widget
+  where
+    widget =
+      createSingle
+        state
+        def
+          { singleMerge = merge,
+            singleHandleEvent = handleEvent,
+            singleHandleMessage = handleMessage,
+            singleGetSizeReq = getSizeReq,
+            singleRender = render
+          }
+
+    colors
+      | null (cfg ^. canvasColors) = [orange, green, steelBlue, deepPink]
+      | otherwise = cfg ^. canvasColors
+    nextColor idx = colors !! (idx `mod` length colors)
+
+    merge wenv node oldNode oldState = result
+      where
+        newNode =
+          node
+            & L.widget .~ makeCanvas cfg oldState
+        result = resultNode newNode
+
+    handleEvent wenv node target evt = case evt of
+      Click point button clicks -> Just result
+        where
+          newPoint = subPoint point origin
+          newPoints = newPoint : state ^. clickedPoints
+          newState = CanvasState newPoints
+          newNode =
+            node
+              & L.widget .~ makeCanvas cfg newState
+          result = resultNode newNode
+      Move _ -> Just (resultReqs node [RenderOnce])
+      _ -> Nothing
+      where
+        vp = node ^. L.info . L.viewport
+        origin = Point (vp ^. L.x) (vp ^. L.y)
+
+    handleMessage wenv node target msg = case cast msg of
+      Just ResetCanvas -> Just result
+        where
+          newState = CanvasState []
+          newNode =
+            node
+              & L.widget .~ makeCanvas cfg newState
+          result = resultNode newNode
+      _ -> Nothing
+
+    getSizeReq wenv node = (sizeReqW, sizeReqH)
+      where
+        sizeReqW = minWidth 100
+        sizeReqH = minHeight 100
+
+    render wenv node renderer = do
+      drawInTranslation renderer origin $
+        forM_ tuples $ \(idx, pointA) -> do
+          setStrokeColor renderer (nextColor idx)
+          setStrokeWidth renderer 2
+          beginPath renderer
+          -- renderLine renderer pointA pointB
+          -- renderRect renderer (Rect (_pX pointA) (_pY pointA) 40 30)
+          renderText renderer pointA def (FontSize 10) def (T.pack $ show pointA)
+          renderArc renderer pointA 30 0 360 CW
+
+          stroke renderer
+      where
+        vp = node ^. L.info . L.viewport
+        mousePos = wenv ^. L.inputStatus . L.mousePos
+        newPoint = subPoint mousePos origin
+        origin = Point (vp ^. L.x) (vp ^. L.y)
+        clicked = state ^. clickedPoints
+        points
+          | isPointInNodeVp node mousePos = reverse $ newPoint : clicked
+          | otherwise = reverse clicked
+        tuples = zip [0 ..] points
+
+data AppModel
+  = AppModel
+  deriving (Eq, Show)
+
 data AppEvent
-  = AppInit
-  | AppIncrease
+  = AppResetCanvas
   deriving (Eq, Show)
 
 makeLenses 'AppModel
 
-buildUI :: WidgetEnv AppModel AppEvent -> AppModel -> WidgetNode AppModel AppEvent
+buildUI ::
+  WidgetEnv AppModel AppEvent ->
+  AppModel ->
+  WidgetNode AppModel AppEvent
 buildUI wenv model = widgetTree
   where
     widgetTree =
       vstack
-        [ label "Hello world",
+        [ button "Reset canvas" AppResetCanvas,
           spacer,
-          hstack
-            [ label $
-                "Click count: "
-                  <> pack
-                    (show $ model ^. clickCount),
-              spacer,
-              button "Increase count" AppIncrease
-            ]
+          canvas `nodeKey` "mainCanvas" `styleBasic` [border 1 gray]
+          --      canvas_ [canvasColor pink] `nodeKey` "mainCanvas" `styleBasic` [border 1 gray]
         ]
         `styleBasic` [padding 10]
 
@@ -45,17 +173,15 @@ handleEvent ::
   AppEvent ->
   [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
-  AppInit -> []
-  AppIncrease -> [Model $ model & clickCount %~ (+ 1)]
+  AppResetCanvas -> [Message "mainCanvas" ResetCanvas]
 
-tmain :: IO ()
-tmain = do
+main07 :: IO ()
+main07 = do
   startApp model handleEvent buildUI config
   where
     config =
-      [ appWindowTitle "test 01",
+      [ appWindowTitle "canvas test",
         appTheme darkTheme,
-        appFontDef "Regular" "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
-        appInitEvent AppInit
+        appFontDef "Regular" "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf"
       ]
-    model = AppModel 0
+    model = AppModel
