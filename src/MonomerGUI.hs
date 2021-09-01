@@ -139,25 +139,33 @@ makeCanvas cfg state = widget
         result = resultNode newNode
 
     handleEvent wenv node target evt =
-      case state ^. icSelected of
-        [] ->
-          case evt of
-            Click point button clicks -> Just result
-              where
-                newPoint = subPoint point origin
-                newState = state & icCreatedNode %~ (ICCricle newPoint globalRidaus :)
-                newNode =
-                  node
-                    & L.widget .~ makeCanvas cfg newState
-                result = resultNode newNode
-            Move p ->
-              let res = filter (inICCanvas (subPoint p origin)) (state ^. icCreatedNode)
-               in Just $ resultReqs (node & L.widget .~ makeCanvas cfg (state & icSelected .~ res)) [RenderOnce]
-            _ -> Nothing
-        [ic@ICCricle {}] ->
-          case evt of
-            Click point button clicks -> Just $ resultNode $ node & L.widget .~ makeCanvas cfg (state & icMarked %~ (ic :) & icSelected .~ [])
-            _ -> Nothing
+      case evt of
+        Click point BtnLeft _ -> case state ^. icSelected of
+          [] -> Just result
+          [ic@ICCricle {}] -> Just $ resultNode $ node & L.widget .~ makeCanvas cfg (state & icMarked %~ (ic :) & icSelected .~ [])
+          _ -> Nothing
+          where
+            newPoint = subPoint point origin
+            newState = state & icCreatedNode %~ (ICCricle newPoint globalRidaus :)
+            newNode =
+              node
+                & L.widget .~ makeCanvas cfg newState
+            result = resultNode newNode
+        -- Click _ BtnMiddle _ -> case trace (show 111111111) state ^. icSelected of
+        --   [ic1@ICCricle {}, ic2@ICCricle {}] ->
+        --     Just $
+        --       resultNode $
+        --         node & L.widget
+        --           .~ makeCanvas
+        --             cfg
+        --             ( state & icCreatedNode
+        --                 %~ (ICArrow (_icPosition (trace (show ic1) ic1)) (_icPosition ic2) :)
+        --                   & icSelected .~ []
+        --             )
+        --   _ -> Nothing
+        Move p ->
+          let res = filter (inICCanvas (subPoint p origin)) (state ^. icCreatedNode)
+           in Just $ resultReqs (node & L.widget .~ makeCanvas cfg (state & icSelected .~ res)) [RenderOnce]
         _ -> Nothing
       where
         vp = node ^. L.info . L.viewport
@@ -166,7 +174,7 @@ makeCanvas cfg state = widget
     handleMessage wenv node target msg = case cast msg of
       Just ResetCanvas -> Just result
         where
-          newState = state & icCreatedNode .~ []
+          newState = state & icCreatedNode .~ [] & icMarked .~ []
           newNode =
             node
               & L.widget .~ makeCanvas cfg newState
@@ -189,7 +197,7 @@ makeCanvas cfg state = widget
           -- renderText renderer (icc ^. icPosition) def (FontSize 10) def (T.pack $ show $ icc ^. icPosition)
           case icc of
             ICCricle {..} -> renderArc renderer _icPosition globalRidaus 0 360 CW
-            _ -> return ()
+            ICArrow {..} -> renderLine renderer _icStartPoint _icEndPoint
           stroke renderer
 
         forM_ (state ^. icSelected) $ \icc -> do
@@ -201,7 +209,7 @@ makeCanvas cfg state = widget
           -- renderText renderer (icc ^. icPosition) def (FontSize 10) def (T.pack $ show $ icc ^. icPosition)
           case icc of
             ICCricle {..} -> renderArc renderer _icPosition globalRidaus 0 360 CW
-            _ -> return ()
+            ICArrow {..} -> renderLine renderer _icStartPoint _icEndPoint
           stroke renderer
 
         forM_ (state ^. icMarked) $ \icc -> do
@@ -213,7 +221,7 @@ makeCanvas cfg state = widget
           -- renderText renderer (icc ^. icPosition) def (FontSize 10) def (T.pack $ show $ icc ^. icPosition)
           case icc of
             ICCricle {..} -> renderArc renderer _icPosition globalRidaus 0 360 CW
-            _ -> return ()
+            ICArrow {..} -> renderLine renderer _icStartPoint _icEndPoint
           stroke renderer
       where
         vp = node ^. L.info . L.viewport
@@ -229,6 +237,7 @@ data AppModel
 
 data AppEvent
   = AppResetCanvas
+  | AppInit
   deriving (Eq, Show)
 
 makeLenses 'AppModel
@@ -243,7 +252,8 @@ buildUI wenv model = widgetTree
       vstack
         [ button "Reset canvas" AppResetCanvas,
           spacer,
-          canvas `nodeKey` "mainCanvas" `styleBasic` [border 1 gray]
+          draggable () (label "item")
+          -- canvas `nodeKey` "mainCanvas" `styleBasic` [border 1 gray]
           --      canvas_ [canvasColor pink] `nodeKey` "mainCanvas" `styleBasic` [border 1 gray]
         ]
         `styleBasic` [padding 10]
@@ -255,6 +265,7 @@ handleEvent ::
   AppEvent ->
   [AppEventResponse AppModel AppEvent]
 handleEvent wenv node model evt = case evt of
+  AppInit -> [setFocusOnKey wenv "mainCanvas"]
   AppResetCanvas -> [Message "mainCanvas" ResetCanvas]
 
 main07 :: IO ()
@@ -264,6 +275,7 @@ main07 = do
     config =
       [ appWindowTitle "canvas test",
         appTheme darkTheme,
-        appFontDef "Regular" "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf"
+        appFontDef "Regular" "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf",
+        appInitEvent AppInit
       ]
     model = AppModel
