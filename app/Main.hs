@@ -1,9 +1,10 @@
 module Main where
 
-import InteractiveGraph
-import Control.Monad
+-- import InteractiveGraph
+-- import Control.Monad
+import ThreePennyGUI
 
 main :: IO ()
 main = do
   putStrLn "start demo"
-  void runGraph
+  tmain
