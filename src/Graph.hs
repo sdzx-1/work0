@@ -19,6 +19,12 @@ import Control.Exception.Base (assert)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Graph.Inductive
+  ( Gr,
+    Graph (mkGraph),
+    insEdges,
+    insNode,
+    topsort,
+  )
 import Data.Graph.Inductive.Dot
 import Data.Graph.Inductive.Example
 import Data.IORef
@@ -175,23 +181,26 @@ evalGraph = do
 
 -- sendIO $ print $ "------node" ++ show i ++ " finish-----"
 
+-- >>> read @Node' $ show tn
+-- Node' "s0" 1 [(0,1)]
+tn = Node "s0" 1 [(0, 1)]
+
+data Node = Node String Int [(Int, Int)] deriving (Read, Show)
+
 start :: IO ()
 start = do
   chan <- newChan
 
-  --   dis <- listDirectory "work"
-  --   let names = Prelude.map ("work/" ++) $ L.sort dis
+  g <- readFile "work/g.txt"
+  print g
+  let ns = Prelude.map (read @Node) (lines g)
+
+  ls <- forM ns $ \(Node s a b) -> do
+    ne <- runCalc <$> readFile ("work/" ++ s ++ ".txt")
+    return (s, ne, a, b)
   let names = ["work/s0.txt", "work/s1.txt", "work/s2.txt", "work/s3.txt"]
   [s0, s1, s2, s3] <- Prelude.map runCalc <$> mapM readFile names
-  let ls =
-        [ ("s0", s0, 0, []), -- source
-          ("s1", s1, 1, [(0, 1)]),
-          ("s2", s2, 2, [(0, 1)]),
-          ("s3", s3, 3, [(1, 1), (2, 2)]),
-          ("s4", s2, 4, [(3, 1)]),
-          ("s5", s3, 5, [(4, 1), (0, 2)]),
-          ("s6", s3, 6, [(3, 1), (5, 2)])
-        ]
+
   -- fork graph worker
   forkIO $
     void $
@@ -206,8 +215,7 @@ start = do
   let go i = do
         print "write chan"
         writeChan chan RunOnce
-        -- when (i `mod` 5 == 0) (writeChan chan (PushByName "work/s1.txt" (Assignment (Name "count") (Elit (LitNum 0)))))
-        if i == 20
+        if i == 100
           then writeChan chan Terminal
           else do
             threadDelay (10 ^ 6)
