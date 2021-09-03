@@ -93,6 +93,13 @@ instance WidgetHandler Body where
               Just [i] -> do
                 bodyWidget % children' % ix i % _1 %= (\(P v) -> P $ v + fmap fromIntegral relPos)
               _ -> return ()
+          UserEvent _ -> do
+            ge <- asks _getUserEvent
+            ue <- liftIO $ ge e
+            case ue >>= fromDynamic @OEvent of
+              Nothing -> return ()
+              Just d -> do
+                liftIO $ print d
           _ -> return ()
 
 makeUIState :: UIState
