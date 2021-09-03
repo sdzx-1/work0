@@ -22,15 +22,18 @@ import Control.Algebra
 import Control.Carrier.Lift
 import Control.Carrier.Reader
 import Control.Carrier.State.Strict
+-- import Optics
+
+import Control.Concurrent
 import Control.Effect.Optics (use, (%=), (.=))
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.Dynamic
 import Data.Foldable (forM_)
 import Data.Kind
--- import Optics
-
 import Data.Maybe
 import Data.Text (Text, pack)
+import Data.Typeable
 import Data.Word (Word8)
 import GHC.Real (Integral)
 import MyLib
@@ -154,10 +157,24 @@ instance WidgetRender Text where
 instance WidgetHandler Text where
   handler e a = return a
 
-initGUI :: IO (Renderer, Font, Manager)
+data OEvent = OEvent deriving (Show, Typeable)
+
+initGUI :: IO (Renderer, Font, Manager, Event -> IO (Maybe Dynamic))
 initGUI = do
   initializeAll
   SF.initialize
+  let toTimerEvent _ _ = return . Just $ OEvent
+      fromTimerEvent = const $ return emptyRegisteredEvent
+  registerEvent <- registerEvent toTimerEvent fromTimerEvent
+  ge <- case registerEvent of
+    Nothing -> error "regieter event error"
+    Just (RegisteredEventType pe ge) -> do
+      let go = do
+            pe OEvent
+            threadDelay (10 ^ 6)
+            go
+      void $ forkIO go
+      return ge
   window <-
     createWindow
       "resize"
@@ -181,7 +198,7 @@ initGUI = do
   fm <- SDL.Framerate.manager
   SDL.Framerate.set fm 30
   font <- load "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf" 20
-  return (renderer, font, fm)
+  return (renderer, font, fm, fmap (fmap toDyn) . ge)
 
 appLoop1 :: forall sig m. (UI sig m, MonadIO m) => m ()
 appLoop1 = go
@@ -203,6 +220,6 @@ appLoop1 = go
 
 main :: IO ()
 main = do
-  (r, f, m) <- initGUI
-  runReader (UIEnv r f m) $ runState makeUIState appLoop1
+  (r, f, m, ge) <- initGUI
+  runReader (UIEnv r f m ge) $ runState makeUIState appLoop1
   return ()
