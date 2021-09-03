@@ -1,10 +1,11 @@
 module Main where
 
-import Graph
+import qualified Node as N
 import qualified GUI as G
 
 main :: IO ()
 main = do
   putStrLn "start demo"
   -- start
-  G.main
+  -- G.main
+  N.start
