@@ -87,7 +87,7 @@ instance WidgetHandler Body where
           (MouseButtonEvent (MouseButtonEventData _ Pressed _ ButtonLeft _ pos)) -> do
             allPos <- use $ bodyWidget % children'
             liftIO $ writeFile "position.txt" (show $ fmap fst allPos)
-            -- undefined
+          -- undefined
           --   cs <- use $ bodyWidget % children'
           --   let newmw = modelWidget [length cs]
           --   bodyWidget % children' %= ((fmap fromIntegral pos, SomeWidget newmw) :)
@@ -107,7 +107,7 @@ instance WidgetHandler Body where
               Nothing -> return ()
               Just d@GR {..} -> do
                 bodyWidget % children' % ix nodeId % _2 .= SomeWidget (tgeWidget' d [nodeId])
-                liftIO $ print d
+                -- liftIO $ print d
           _ -> return ()
 
 makeUIState :: [BasePositon] -> UIState
@@ -234,7 +234,12 @@ instance WidgetRender TraceGraphEval where
     font <- asks _font
     let GR {..} = _model
     liftIO $ do
-      renderFont font renderer (pack $ "node s" ++ show nodeId) (fmap fromIntegral bp) _frontColor
+      renderFont
+        font
+        renderer
+        (pack $ "node s" ++ show nodeId)
+        (fmap fromIntegral bp)
+        (if isSkip result then green else _frontColor)
       let bpResult = P (V2 x (y + 30))
 
       renderFont font renderer (pack $ "output: " <> showExpr result) (fmap fromIntegral bpResult) MyLib.blue
