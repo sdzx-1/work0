@@ -188,7 +188,7 @@ evalGraph tracer = do
               (AppFun (Elit $ LitSymbol "handler") inputs)
         ------------------ trace grap eval result
         let removeBuildIn Nothing = []
-            removeBuildIn (Just e) = [e | not (isBuildIn e), not (isFun e)]
+            removeBuildIn (Just e) = [e | not (isBuildIn e)]
 
             varsVal =
               concatMap
