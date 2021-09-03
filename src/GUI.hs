@@ -50,7 +50,7 @@ import Widget
 
 data Body = Body
 
-bodyWidget' :: Int -> Widget Body
+bodyWidget' :: [BasePositon] -> Widget Body
 bodyWidget' i =
   Widget
     { _width = 100,
@@ -60,7 +60,7 @@ bodyWidget' i =
       _frontColor = 90,
       _visible = True,
       _path = [],
-      _children = maketgwWidget i
+      _children = maketgwWidget' i
       -- [ (200, SomeWidget (tgeWidget [0])),
       --   (300, SomeWidget (tgeWidget [1]))
       -- ]
@@ -84,7 +84,10 @@ instance WidgetHandler Body where
     where
       handler1 e = do
         case eventPayload e of
-          -- (MouseButtonEvent (MouseButtonEventData _ Pressed _ ButtonLeft _ pos)) -> do
+          (MouseButtonEvent (MouseButtonEventData _ Pressed _ ButtonLeft _ pos)) -> do
+            allPos <- use $ bodyWidget % children'
+            liftIO $ writeFile "position.txt" (show $ fmap fst allPos)
+            -- undefined
           --   cs <- use $ bodyWidget % children'
           --   let newmw = modelWidget [length cs]
           --   bodyWidget % children' %= ((fmap fromIntegral pos, SomeWidget newmw) :)
@@ -107,7 +110,7 @@ instance WidgetHandler Body where
                 liftIO $ print d
           _ -> return ()
 
-makeUIState :: Int -> UIState
+makeUIState :: [BasePositon] -> UIState
 makeUIState i =
   UIState
     { _bodyWidget = SomeWidget $ bodyWidget' i,
@@ -169,8 +172,11 @@ instance WidgetRender Text where
 instance WidgetHandler Text where
   handler e a = return a
 
-maketgwWidget :: Int -> [(BasePositon, SomeWidget)]
-maketgwWidget i = [(P (V2 (i * 100) 0), SomeWidget $ tgeWidget [i]) | i <- [0 .. (i -1)]]
+makeBP :: Int -> [BasePositon]
+makeBP i = [P (V2 (i * 100) 0) | i <- [0 .. (i -1)]]
+
+maketgwWidget' :: [BasePositon] -> [(BasePositon, SomeWidget)]
+maketgwWidget' p = zip p (map (SomeWidget . tgeWidget . (: [])) [0 ..])
 
 tgeWidget :: [Int] -> Widget TraceGraphEval
 tgeWidget path =
@@ -317,5 +323,5 @@ appLoop1 = go
 main :: IO ()
 main = do
   (r, f, m, pe, ge) <- initGUI
-  runReader (UIEnv r f m ge) $ runState (makeUIState 5) appLoop1
+  runReader (UIEnv r f m ge) $ runState (makeUIState (makeBP 5)) appLoop1
   return ()

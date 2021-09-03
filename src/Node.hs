@@ -17,6 +17,7 @@ import Control.Tracer
 import GUI
 import Graph
 import System.Environment
+import Text.Read
 import Widget
 
 data Node = Node String Int [(Int, Int)] deriving (Read, Show)
@@ -68,5 +69,11 @@ start = do
   --- send command
   forkIO $ go 0
 
-  runReader (UIEnv r f m ge) $ runState (makeUIState (length ns)) appLoop1
+  pos' <- try @SomeException $ readFile $ workDir ++ "/position.txt"
+  let poss = case pos' of
+        Left _ -> makeBP $ length ns
+        Right s -> case readMaybe s of
+          Nothing -> makeBP $ length ns
+          Just a -> a
+  runReader (UIEnv r f m ge) $ runState (makeUIState poss) appLoop1
   threadDelay (10 ^ 6)
