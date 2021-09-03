@@ -63,5 +63,5 @@ start = do
   --- send command
   forkIO $ go 0
 
-  runReader (UIEnv r f m ge) $ runState makeUIState appLoop1
+  runReader (UIEnv r f m ge) $ runState (makeUIState (length ns)) appLoop1
   threadDelay (10 ^ 6)

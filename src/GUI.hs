@@ -50,8 +50,8 @@ import Widget
 
 data Body = Body
 
-bodyWidget' :: Widget Body
-bodyWidget' =
+bodyWidget' :: Int -> Widget Body
+bodyWidget' i =
   Widget
     { _width = 100,
       _heigh = 100,
@@ -60,7 +60,7 @@ bodyWidget' =
       _frontColor = 90,
       _visible = True,
       _path = [],
-      _children = make10tgwWidget
+      _children = maketgwWidget i
       -- [ (200, SomeWidget (tgeWidget [0])),
       --   (300, SomeWidget (tgeWidget [1]))
       -- ]
@@ -107,10 +107,10 @@ instance WidgetHandler Body where
                 liftIO $ print d
           _ -> return ()
 
-makeUIState :: UIState
-makeUIState =
+makeUIState :: Int -> UIState
+makeUIState i =
   UIState
-    { _bodyWidget = SomeWidget bodyWidget',
+    { _bodyWidget = SomeWidget $ bodyWidget' i,
       _focus = []
     }
 
@@ -169,8 +169,8 @@ instance WidgetRender Text where
 instance WidgetHandler Text where
   handler e a = return a
 
-make10tgwWidget :: [(BasePositon, SomeWidget)]
-make10tgwWidget = [(P (V2 (i * 100) 0), SomeWidget $ tgeWidget [i]) | i <- [0 .. 5]]
+maketgwWidget :: Int -> [(BasePositon, SomeWidget)]
+maketgwWidget i = [(P (V2 (i * 100) 0), SomeWidget $ tgeWidget [i]) | i <- [0 .. (i -1)]]
 
 tgeWidget :: [Int] -> Widget TraceGraphEval
 tgeWidget path =
@@ -317,5 +317,5 @@ appLoop1 = go
 main :: IO ()
 main = do
   (r, f, m, pe, ge) <- initGUI
-  runReader (UIEnv r f m ge) $ runState makeUIState appLoop1
+  runReader (UIEnv r f m ge) $ runState (makeUIState 5) appLoop1
   return ()
