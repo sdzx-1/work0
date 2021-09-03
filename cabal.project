@@ -1,7 +1,5 @@
 packages: .
 
-package nanovg
-    flags: +stb_truetype
 
 source-repository-package
     type: git
@@ -10,3 +8,9 @@ source-repository-package
     subdir: contra-tracer
             io-classes
             io-sim
+
+
+source-repository-package
+    type: git
+    location: https://github.com/EMQ-YangM/fused-effects-gui
+    tag: 8e4d0b2bdbe8b048b35bc7b17f44cbcad44c2a4b
