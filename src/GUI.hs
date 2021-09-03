@@ -61,8 +61,8 @@ bodyWidget' =
       _visible = True,
       _path = [],
       _children =
-        [ (10, SomeWidget (modelWidget [0])),
-          (110, SomeWidget (modelWidget [1]))
+        [ (200, SomeWidget (tgeWidget [0])),
+          (300, SomeWidget (tgeWidget [1]))
         ]
     }
 
@@ -102,7 +102,7 @@ instance WidgetHandler Body where
             ue <- liftIO $ ge e
             case ue >>= fromDynamic @TraceGraphEval of
               Nothing -> return ()
-              Just d -> do
+              Just d-> do
                 liftIO $ print d
           _ -> return ()
 
@@ -168,10 +168,54 @@ instance WidgetRender Text where
 instance WidgetHandler Text where
   handler e a = return a
 
+tgeWidget :: [Int] -> Widget TraceGraphEval
+tgeWidget path =
+  Widget
+    { _width = 80,
+      _heigh = 30,
+      _model = defaultGR,
+      _backgroundColor = 30,
+      _frontColor = V4 255 0 0 255,
+      _visible = True,
+      _path = path,
+      _children = []
+    }
+
+showLit :: Lit -> String
+showLit (LitStr s) = s
+showLit (LitNum d) = show d
+showLit LitNull = "null"
+showLit _ = "unspport"
+
+showExpr :: Expr -> String
+showExpr (Elit l) = showLit l
+showExpr _ = "unspport"
+
+instance WidgetRender TraceGraphEval where
+  renderSelf bp@(P (V2 x y)) w@Widget {..} = do
+    renderer <- asks _renderer
+    font <- asks _font
+    let GR {..} = _model
+    liftIO $ do
+      renderFont font renderer (pack $ "node s" ++ show nodeId) (fmap fromIntegral bp) _frontColor
+      let bpResult = P (V2 x (y + 30))
+      renderFont font renderer (pack $ "output: " <> showExpr result) (fmap fromIntegral bpResult) _frontColor
+
+      let P (V2 x1 y1) = P (V2 (fromIntegral x) (fromIntegral y + 60))
+      forM_ (zip [0 ..] vars) $ \(idx, (name, e)) -> do
+        renderFont font renderer (pack $ show name ++ ": " ++ showExpr e) (P (V2 x1 (y1 + idx * 30))) _frontColor
+
+instance WidgetHandler TraceGraphEval where
+  handler e a = do
+    return a
+
 defaultGR =
   GR
     { nodeId = 1,
-      vars = [],
+      vars =
+        [ ("a", Elit (LitNum 30)),
+          ("b", Elit (LitNum 30))
+        ],
       result = Elit (LitNum 10)
     }
 
