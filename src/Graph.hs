@@ -181,10 +181,6 @@ evalGraph = do
 
 -- sendIO $ print $ "------node" ++ show i ++ " finish-----"
 
--- >>> read @Node' $ show tn
--- Node' "s0" 1 [(0,1)]
-tn = Node "s0" 1 [(0, 1)]
-
 data Node = Node String Int [(Int, Int)] deriving (Read, Show)
 
 start :: IO ()
@@ -198,8 +194,6 @@ start = do
   ls <- forM ns $ \(Node s a b) -> do
     ne <- runCalc <$> readFile ("work/" ++ s ++ ".txt")
     return (s, ne, a, b)
-  let names = ["work/s0.txt", "work/s1.txt", "work/s2.txt", "work/s3.txt"]
-  [s0, s1, s2, s3] <- Prelude.map runCalc <$> mapM readFile names
 
   -- fork graph worker
   forkIO $
