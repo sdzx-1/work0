@@ -15,20 +15,23 @@ import Control.Monad
 import Control.Tracer
 import GUI
 import Graph
+import System.Environment
 import Widget
 
 data Node = Node String Int [(Int, Int)] deriving (Read, Show)
 
 start :: IO ()
 start = do
+  workDir : _ <- getArgs
+
   chan <- newChan
 
-  g <- readFile "work/g.txt"
+  g <- readFile $ workDir ++ "/g.txt"
   print g
   let ns = Prelude.map (read @Node) (lines g)
 
   ls <- forM ns $ \(Node s a b) -> do
-    ne <- runCalc <$> readFile ("work/" ++ s ++ ".txt")
+    ne <- runCalc <$> readFile (workDir ++ "/" ++ s ++ ".txt")
     return (s, ne, a, b)
 
   (r, f, m, pe, ge) <- initGUI
