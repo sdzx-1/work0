@@ -40,7 +40,7 @@ import Foreign.StablePtr
 import GHC.Real (Integral)
 import Graph
 import MyLib
-import Optics (ix, (%), (^.), _1)
+import Optics (ix, (%), (^.), _1, _2)
 import SDL
 import SDL.Font as SF
 import SDL.Framerate
@@ -60,10 +60,10 @@ bodyWidget' =
       _frontColor = 90,
       _visible = True,
       _path = [],
-      _children =
-        [ (200, SomeWidget (tgeWidget [0])),
-          (300, SomeWidget (tgeWidget [1]))
-        ]
+      _children = make10tgwWidget
+      -- [ (200, SomeWidget (tgeWidget [0])),
+      --   (300, SomeWidget (tgeWidget [1]))
+      -- ]
     }
 
 instance WidgetRender Body where
@@ -102,7 +102,8 @@ instance WidgetHandler Body where
             ue <- liftIO $ ge e
             case ue >>= fromDynamic @TraceGraphEval of
               Nothing -> return ()
-              Just d-> do
+              Just d@GR {..} -> do
+                bodyWidget % children' % ix nodeId % _2 .= SomeWidget (tgeWidget' d [nodeId])
                 liftIO $ print d
           _ -> return ()
 
@@ -168,12 +169,40 @@ instance WidgetRender Text where
 instance WidgetHandler Text where
   handler e a = return a
 
+make10tgwWidget :: [(BasePositon, SomeWidget)]
+make10tgwWidget = [(P (V2 (i * 100) 0), SomeWidget $ tgeWidget [i]) | i <- [0 .. 5]]
+
 tgeWidget :: [Int] -> Widget TraceGraphEval
 tgeWidget path =
   Widget
-    { _width = 80,
+    { _width = 100,
       _heigh = 30,
       _model = defaultGR,
+      _backgroundColor = 30,
+      _frontColor = V4 255 0 0 255,
+      _visible = True,
+      _path = path,
+      _children = []
+    }
+
+red :: V4 Word8
+red = V4 255 0 0 255
+
+green :: V4 Word8
+green = V4 0 255 0 255
+
+blue :: V4 Word8
+blue = V4 0 0 255 255
+
+black :: V4 Word8
+black = 0
+
+tgeWidget' :: TraceGraphEval -> [Int] -> Widget TraceGraphEval
+tgeWidget' v path =
+  Widget
+    { _width = 100,
+      _heigh = 30,
+      _model = v,
       _backgroundColor = 30,
       _frontColor = V4 255 0 0 255,
       _visible = True,
@@ -189,6 +218,8 @@ showLit _ = "unspport"
 
 showExpr :: Expr -> String
 showExpr (Elit l) = showLit l
+showExpr Skip = "skip"
+showExpr (Fun _ _) = "function"
 showExpr _ = "unspport"
 
 instance WidgetRender TraceGraphEval where
@@ -199,11 +230,12 @@ instance WidgetRender TraceGraphEval where
     liftIO $ do
       renderFont font renderer (pack $ "node s" ++ show nodeId) (fmap fromIntegral bp) _frontColor
       let bpResult = P (V2 x (y + 30))
-      renderFont font renderer (pack $ "output: " <> showExpr result) (fmap fromIntegral bpResult) _frontColor
 
+      renderFont font renderer (pack $ "output: " <> showExpr result) (fmap fromIntegral bpResult) MyLib.blue
       let P (V2 x1 y1) = P (V2 (fromIntegral x) (fromIntegral y + 60))
+
       forM_ (zip [0 ..] vars) $ \(idx, (name, e)) -> do
-        renderFont font renderer (pack $ show name ++ ": " ++ showExpr e) (P (V2 x1 (y1 + idx * 30))) _frontColor
+        renderFont font renderer (pack $ show name ++ ": " ++ showExpr e) (P (V2 x1 (y1 + idx * 30))) black
 
 instance WidgetHandler TraceGraphEval where
   handler e a = do
@@ -219,7 +251,7 @@ defaultGR =
       result = Elit (LitNum 10)
     }
 
-initGUI :: IO (Renderer, Font, Manager, Event -> IO (Maybe Dynamic))
+initGUI :: IO (Renderer, Font, Manager, TraceGraphEval -> IO EventPushResult, Event -> IO (Maybe Dynamic))
 initGUI = do
   initializeAll
   SF.initialize
@@ -235,15 +267,10 @@ initGUI = do
         let ptr = castStablePtrToPtr sp
         return (RegisteredEventData Nothing 0 ptr nullPtr)
   registerEvent <- registerEvent toTimerEvent fromTimerEvent
-  ge <- case registerEvent of
+  (pe, ge) <- case registerEvent of
     Nothing -> error "regieter event error"
     Just (RegisteredEventType pe ge) -> do
-      let go = do
-            pe defaultGR {nodeId = 20}
-            threadDelay (10 ^ 6)
-            go
-      void $ forkIO go
-      return ge
+      return (pe, ge)
   window <-
     createWindow
       "resize"
@@ -267,7 +294,7 @@ initGUI = do
   fm <- SDL.Framerate.manager
   SDL.Framerate.set fm 30
   font <- load "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf" 20
-  return (renderer, font, fm, fmap (fmap toDyn) . ge)
+  return (renderer, font, fm, pe, fmap (fmap toDyn) . ge)
 
 appLoop1 :: forall sig m. (UI sig m, MonadIO m) => m ()
 appLoop1 = go
@@ -289,6 +316,6 @@ appLoop1 = go
 
 main :: IO ()
 main = do
-  (r, f, m, ge) <- initGUI
+  (r, f, m, pe, ge) <- initGUI
   runReader (UIEnv r f m ge) $ runState makeUIState appLoop1
   return ()

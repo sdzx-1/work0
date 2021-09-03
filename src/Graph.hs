@@ -34,6 +34,7 @@ import Data.IntMap as IntMap
 import qualified Data.List as L
 import Data.Map as Map
 import Data.Maybe
+import Data.Typeable
 import qualified Eval
 import GHC.IOArray (newIOArray)
 import Name
@@ -41,7 +42,6 @@ import Optics (makeLenses, (^.))
 import System.Directory
 import System.Process
 import Type
-import Data.Typeable
 
 tmain :: (Show a, Show b, Graph gr) => gr a b -> IO (gr a b)
 tmain a = do
@@ -169,6 +169,31 @@ data TraceGraphEval = GR
   }
   deriving (Show, Typeable)
 
+traceFun ::
+  Has (State GlobalState :+: Lift IO) sig m =>
+  Map Name PAddr ->
+  IntMap (Maybe Expr) ->
+  Expr ->
+  Tracer m TraceGraphEval ->
+  Int ->
+  m ()
+traceFun m im e tracer i = do
+  let removeBuildIn Nothing = []
+      removeBuildIn (Just e) = [e | not (isBuildIn e)]
+
+      varsVal =
+        concatMap
+          ( \(name, PAddr i) ->
+              fmap (name,) $ removeBuildIn $ join $ IntMap.lookup i im
+          )
+          (Map.toList m)
+  traceWith tracer $
+    GR
+      { nodeId = i,
+        vars = varsVal,
+        result = e
+      }
+
 evalGraph :: Has (State GlobalState :+: Lift IO) sig m => Tracer m TraceGraphEval -> m ()
 evalGraph tracer = do
   elist <- use evalList
@@ -177,7 +202,9 @@ evalGraph tracer = do
     -- get all inputs
     inputs <- sendIO $ mapM readIORef (hs ^. inputs)
     if any isSkip inputs
-      then sendIO $ writeIORef (hs ^. output) Skip
+      then do
+        traceFun (hs ^. handlerEnv) (hs ^. handlerStore) Skip tracer i
+        sendIO $ writeIORef (hs ^. output) Skip
       else do
         sendIO $ print $ "------node" ++ show i ++ " start------"
         -- eval node code
@@ -188,21 +215,7 @@ evalGraph tracer = do
               (hs ^. handlerStore)
               (AppFun (Elit $ LitSymbol "handler") inputs)
         ------------------ trace grap eval result
-        let removeBuildIn Nothing = []
-            removeBuildIn (Just e) = [e | not (isBuildIn e)]
-
-            varsVal =
-              concatMap
-                ( \(name, PAddr i) ->
-                    fmap (name,) $ removeBuildIn $ join $ IntMap.lookup i a
-                )
-                (Map.toList b)
-        traceWith tracer $
-          GR
-            { nodeId = i,
-              vars = varsVal,
-              result = c
-            }
+        traceFun b a c tracer i
         ------------------
         -- write output
         sendIO $ writeIORef (hs ^. output) c
@@ -212,6 +225,3 @@ evalGraph tracer = do
         handlersState %= Map.insert i newhs
 
 -- sendIO $ print $ "------node" ++ show i ++ " finish-----"
-
-
-

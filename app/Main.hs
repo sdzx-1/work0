@@ -7,5 +7,5 @@ main :: IO ()
 main = do
   putStrLn "start demo"
   -- start
-  G.main
-  -- N.start
+  -- G.main
+  N.start
