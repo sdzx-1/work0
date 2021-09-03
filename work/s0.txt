@@ -1,11 +1,5 @@
 
 
-var a = 1;
-var b = 2;
-var c = 0;
-var e = "ndoeAStart" ;
-
-
 function add(a1,b1) {
   return(a1 + b1)
 };
@@ -27,7 +21,8 @@ function fib(a,b,max){
 };
 
 
-function handler(a){
+function handler(){
+  var a = random(5,15);
   if (a < 10) {
     return(fib(1,1,a));
   } else {

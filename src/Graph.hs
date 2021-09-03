@@ -34,8 +34,6 @@ import System.Directory
 import System.Process
 import Type
 
--- >>> tmain tv
--- mkGraph [(0,"s0"),(1,"s1"),(2,"s2"),(3,"s3"),(4,"s4"),(5,"s5"),(6,"s6"),(7,"s7")] [(0,1,1),(1,2,1),(1,3,1),(2,4,1),(2,5,3),(3,5,2),(4,5,1),(5,6,1),(5,7,1)]
 tmain :: (Show a, Show b, Graph gr) => gr a b -> IO (gr a b)
 tmain a = do
   let graph = a
@@ -44,35 +42,6 @@ tmain a = do
   system "dot -Tpng -o file.png file.dot"
   system "eog file.png"
   return a
-
-g :: Gr String Int
-g =
-  mkGraph
-    [ (0, "s0"),
-      (1, "s1"),
-      (2, "s2"),
-      (3, "s3"),
-      (4, "s4"),
-      (5, "s5"),
-      (6, "s6")
-    ]
-    [ (0, 1, 1),
-      (1, 2, 1),
-      (1, 3, 1),
-      (3, 5, 2),
-      (2, 4, 1),
-      (4, 5, 1),
-      (5, 6, 1),
-      (2, 5, 3)
-    ]
-
--- >>> t
--- mkGraph [(0,"s0"),(1,"s1"),(2,"s2"),(3,"s3"),(4,"s4"),(5,"s5"),(6,"s6"),(7,"s7")] [(0,1,()),(1,2,()),(1,3,()),(2,4,()),(3,5,()),(4,5,()),(5,6,())]
-tv =
-  let k = topsort' g
-      k1 = insEdge (5, 7, 1) $ insNode (7, "s7") g
-      k2 = topsort g
-   in k1
 
 type Inputs = [IORef Expr]
 
@@ -149,14 +118,9 @@ insertNameNodeEdgeExpr name code nodeid edges = do
   sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
   --  3.2 find all source nodeid IORef
   inputs <-
-    if Prelude.null edges' -- source node , get a input
-      then do
-        ref <- sendIO $ newIORef defaultExpr
-        return [ref]
-      else do
-        forM edges' $ \(sourceNodeid, _) -> do
-          hss <- use handlersState
-          maybe (error "nodeid Not find") (return . _output) (Map.lookup sourceNodeid hss)
+    forM edges' $ \(sourceNodeid, _) -> do
+      hss <- use handlersState
+      maybe (error "nodeid Not find") (return . _output) (Map.lookup sourceNodeid hss)
 
   -- make HandlerState
   let hs =
@@ -169,7 +133,7 @@ insertNameNodeEdgeExpr name code nodeid edges = do
   handlersState %= Map.insert nodeid hs
 
 data Command
-  = Push Expr
+  = RunOnce
   | Terminal
   deriving (Show)
 
@@ -182,18 +146,10 @@ runGraph chan =
         print "----------------------GlobaseState----------------------"
         print s
         print "--------------------------------------------------------"
-    Push e -> evalGraph e >> runGraph chan
+    RunOnce -> evalGraph >> runGraph chan
 
-evalGraph :: Has (State GlobalState :+: Lift IO) sig m => Expr -> m ()
-evalGraph e = do
-  elist <- use evalList
-  uses handlersState (_inputs . fromMaybe (error "null list") . Map.lookup (head elist)) >>= \case
-    [input] -> sendIO $ writeIORef input e
-    _ -> error "not support m source"
-  evalGraph'
-
-evalGraph' :: Has (State GlobalState :+: Lift IO) sig m => m ()
-evalGraph' = do
+evalGraph :: Has (State GlobalState :+: Lift IO) sig m => m ()
+evalGraph = do
   elist <- use evalList
   forM_ elist $ \i -> do
     hs <- uses handlersState (fromMaybe (error "node not fing") . Map.lookup i)
@@ -249,7 +205,7 @@ start = do
 
   let go i = do
         print "write chan"
-        writeChan chan (Push (Elit (LitNum 40)))
+        writeChan chan RunOnce
         -- when (i `mod` 5 == 0) (writeChan chan (PushByName "work/s1.txt" (Assignment (Name "count") (Elit (LitNum 0)))))
         if i == 20
           then writeChan chan Terminal
