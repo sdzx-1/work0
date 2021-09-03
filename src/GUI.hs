@@ -35,13 +35,17 @@ import Data.Maybe
 import Data.Text (Text, pack)
 import Data.Typeable
 import Data.Word (Word8)
+import Foreign.Ptr
+import Foreign.StablePtr
 import GHC.Real (Integral)
+import Graph
 import MyLib
 import Optics (ix, (%), (^.), _1)
 import SDL
 import SDL.Font as SF
 import SDL.Framerate
 import SDL.Primitive
+import Type
 import Widget
 
 data Body = Body
@@ -96,7 +100,7 @@ instance WidgetHandler Body where
           UserEvent _ -> do
             ge <- asks _getUserEvent
             ue <- liftIO $ ge e
-            case ue >>= fromDynamic @OEvent of
+            case ue >>= fromDynamic @TraceGraphEval of
               Nothing -> return ()
               Just d -> do
                 liftIO $ print d
@@ -164,20 +168,34 @@ instance WidgetRender Text where
 instance WidgetHandler Text where
   handler e a = return a
 
-data OEvent = OEvent deriving (Show, Typeable)
+defaultGR =
+  GR
+    { nodeId = 1,
+      vars = [],
+      result = Elit (LitNum 10)
+    }
 
 initGUI :: IO (Renderer, Font, Manager, Event -> IO (Maybe Dynamic))
 initGUI = do
   initializeAll
   SF.initialize
-  let toTimerEvent _ _ = return . Just $ OEvent
-      fromTimerEvent = const $ return emptyRegisteredEvent
+  let toTimerEvent (RegisteredEventData _ 0 ptr nullPtr) _ = do
+        let sp = castPtrToStablePtr ptr
+        a <- deRefStablePtr sp
+        freeStablePtr sp
+        return . Just $ a
+      toTimerEvent _ _ = error "never happened"
+
+      fromTimerEvent b = do
+        sp <- newStablePtr b
+        let ptr = castStablePtrToPtr sp
+        return (RegisteredEventData Nothing 0 ptr nullPtr)
   registerEvent <- registerEvent toTimerEvent fromTimerEvent
   ge <- case registerEvent of
     Nothing -> error "regieter event error"
     Just (RegisteredEventType pe ge) -> do
       let go = do
-            pe OEvent
+            pe defaultGR {nodeId = 20}
             threadDelay (10 ^ 6)
             go
       void $ forkIO go

@@ -41,6 +41,7 @@ import Optics (makeLenses, (^.))
 import System.Directory
 import System.Process
 import Type
+import Data.Typeable
 
 tmain :: (Show a, Show b, Graph gr) => gr a b -> IO (gr a b)
 tmain a = do
@@ -166,7 +167,7 @@ data TraceGraphEval = GR
     vars :: [(Name, Expr)],
     result :: Expr
   }
-  deriving (Show)
+  deriving (Show, Typeable)
 
 evalGraph :: Has (State GlobalState :+: Lift IO) sig m => Tracer m TraceGraphEval -> m ()
 evalGraph tracer = do
