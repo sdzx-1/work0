@@ -11,6 +11,7 @@ import Control.Carrier.Reader
 import Control.Carrier.State.Strict
 import Control.Concurrent
 import Control.Effect.Optics
+import Control.Exception
 import Control.Monad
 import Control.Tracer
 import GUI
@@ -31,9 +32,13 @@ start = do
   let ns = Prelude.map (read @Node) (lines g)
 
   ls <- forM ns $ \(Node s a b) -> do
-    ne <- runCalc <$> readFile (workDir ++ "/" ++ s ++ ".txt")
+    ne' <- try @SomeException $ runCalc <$> readFile (workDir ++ "/" ++ s ++ ".txt")
+    ne <- case ne' of
+      Left e -> error $ show $ "module is " ++ s ++ " " ++ show e
+      Right v -> return v
+    print ne
     return (s, ne, a, b)
-
+  print ls
   (r, f, m, pe, ge) <- initGUI
 
   -- fork graph worker
