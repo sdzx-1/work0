@@ -40,9 +40,17 @@ data Expr
   | Skip  -- if any args is Skip, then skip next cal , write result to Skip
 {- ORMOLU_ENABLE -}
 
-skip :: Expr -> Bool 
-skip Skip = True 
-skip _ = False
+isSkip :: Expr -> Bool
+isSkip Skip = True
+isSkip _ = False
+
+isBuildIn :: Expr -> Bool
+isBuildIn (BuildInFunction _) = True
+isBuildIn _ = False
+
+isFun :: Expr -> Bool
+isFun (Fun _ _) = True
+isFun _ = False
 
 data EvalError
   = SymbolNotFind
@@ -66,6 +74,7 @@ instance Show Expr where
   show (Assignment name e) = " " ++ show name ++ " = " ++ show e
   show (IfElse a b c) = "if: " ++ show a ++ show b ++ show c
   show Skip = "skip: "
+
 -- >>> snd <$> runEval t
 -- Right  lit: LitNum 55.0
 t =

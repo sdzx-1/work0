@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -18,6 +19,7 @@ import Control.Effect.State.Labelled
 import Control.Exception.Base (assert)
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Tracer
 import Data.Graph.Inductive
   ( Gr,
     Graph (mkGraph),
@@ -143,8 +145,13 @@ data Command
   | Terminal
   deriving (Show)
 
-runGraph :: Has (State GlobalState :+: Lift IO) sig m => Chan Command -> m ()
-runGraph chan =
+data TraceRunGraph
+  = TraceCommand Command
+  | TraceResult TraceGraphEval
+  deriving (Show)
+
+runGraph :: Has (State GlobalState :+: Lift IO) sig m => Chan Command -> Tracer m TraceRunGraph -> m ()
+runGraph chan tracer =
   sendIO (readChan chan) >>= \case
     Terminal -> do
       s <- S.get @GlobalState
@@ -152,16 +159,23 @@ runGraph chan =
         print "----------------------GlobaseState----------------------"
         print s
         print "--------------------------------------------------------"
-    RunOnce -> evalGraph >> runGraph chan
+    RunOnce -> evalGraph (contramap TraceResult tracer) >> runGraph chan tracer
 
-evalGraph :: Has (State GlobalState :+: Lift IO) sig m => m ()
-evalGraph = do
+data TraceGraphEval = GR
+  { nodeId :: Int,
+    vars :: [(Name, Expr)],
+    result :: Expr
+  }
+  deriving (Show)
+
+evalGraph :: Has (State GlobalState :+: Lift IO) sig m => Tracer m TraceGraphEval -> m ()
+evalGraph tracer = do
   elist <- use evalList
   forM_ elist $ \i -> do
     hs <- uses handlersState (fromMaybe (error "node not fing") . Map.lookup i)
     -- get all inputs
     inputs <- sendIO $ mapM readIORef (hs ^. inputs)
-    if any skip inputs
+    if any isSkip inputs
       then sendIO $ writeIORef (hs ^. output) Skip
       else do
         sendIO $ print $ "------node" ++ show i ++ " start------"
@@ -172,6 +186,23 @@ evalGraph = do
               (hs ^. handlerEnv)
               (hs ^. handlerStore)
               (AppFun (Elit $ LitSymbol "handler") inputs)
+        ------------------ trace grap eval result
+        let removeBuildIn Nothing = []
+            removeBuildIn (Just e) = [e | not (isBuildIn e), not (isFun e)]
+
+            varsVal =
+              concatMap
+                ( \(name, PAddr i) ->
+                    fmap (name,) $ removeBuildIn $ join $ IntMap.lookup i a
+                )
+                (Map.toList b)
+        traceWith tracer $
+          GR
+            { nodeId = i,
+              vars = varsVal,
+              result = c
+            }
+        ------------------
         -- write output
         sendIO $ writeIORef (hs ^. output) c
         -- update HandlerState
@@ -204,7 +235,7 @@ start = do
           forM_ ls $ \(a, b, c, d) -> insertNameNodeEdgeExpr a b c d
           g <- use graph
           sendIO $ forkIO $ void $ tmain g
-          runGraph chan
+          runGraph chan (contramap show stdoutTracer)
 
   let go i = do
         print "write chan"
