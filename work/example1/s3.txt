@@ -1,9 +1,4 @@
 
-function handler(a){
-  if( a < 10) 
-  {
-      return(a + 1)
-  }else {
-      skip()
-  }
+function handler(a,b){
+  return(a + b)
 }

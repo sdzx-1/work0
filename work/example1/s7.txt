@@ -1,4 +1,7 @@
 
+var counter = 0 ;
+
 function handler(a){
+  counter = counter + 1;
   return(a + 1)
 }

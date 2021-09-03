@@ -60,7 +60,7 @@ start = do
   let go i = do
         print "write chan"
         writeChan chan RunOnce
-        if i == 100
+        if i == 10000
           then writeChan chan Terminal
           else do
             threadDelay (10 ^ 6)

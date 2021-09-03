@@ -1,4 +1,4 @@
 
-function handler(){
-  random(5,15)
+function handler(a){
+  return(a + 1)
 }
