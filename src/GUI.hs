@@ -80,7 +80,7 @@ inRectangle (P v0@(V2 x0 y0)) (Rectangle (P vs) size) =
 -- v0 > fmap fromIntegral vs && v0 < fmap fromIntegral (vs + size)
 
 instance WidgetHandler Body where
-  handler es a = mapM_ handler1 es >> return a
+  handler es a = mapM_ handler1 es >> return ()
     where
       handler1 e = do
         case eventPayload e of
@@ -107,7 +107,7 @@ instance WidgetHandler Body where
               Nothing -> return ()
               Just d@GR {..} -> do
                 bodyWidget % children' % ix nodeId % _2 .= SomeWidget (tgeWidget' d [nodeId])
-                -- liftIO $ print d
+          -- liftIO $ print d
           _ -> return ()
 
 makeUIState :: [BasePositon] -> UIState
@@ -147,7 +147,7 @@ instance WidgetRender Model where
 
 instance WidgetHandler Model where
   handler e a = do
-    return a
+    return ()
 
 textWidget :: [Int] -> Widget Text
 textWidget path =
@@ -170,7 +170,7 @@ instance WidgetRender Text where
       renderFont font renderer _model (fmap fromIntegral bp) _frontColor
 
 instance WidgetHandler Text where
-  handler e a = return a
+  handler e a = return ()
 
 makeBP :: Int -> [BasePositon]
 makeBP i = [P (V2 (i * 100) 0) | i <- [0 .. (i -1)]]
@@ -250,7 +250,7 @@ instance WidgetRender TraceGraphEval where
 
 instance WidgetHandler TraceGraphEval where
   handler e a = do
-    return a
+    return ()
 
 defaultGR =
   GR
@@ -312,8 +312,7 @@ appLoop1 = go
   where
     go = do
       e <- liftIO pollEvents
-      SomeWidget bodyW <- gets _bodyWidget
-      handler e Body
+      use bodyWidget >>= handlerSomeWidget e
 
       -- TODO: dispatch event to focus widget
 
