@@ -75,5 +75,5 @@ start = do
         Right s -> case readMaybe s of
           Nothing -> makeBP $ length ns
           Just a -> a
-  runReader (UIEnv r f m ge) $ runState (makeUIState poss) appLoop1
+  runReader (UIEnv r f m ge) $ runState (makeUIState workDir poss) appLoop1
   threadDelay (10 ^ 6)

@@ -1,4 +1,6 @@
 
 function handler(){
-  random(5,15)
+  var a = random(5,15);
+  logger(a);
+  return(a)
 }

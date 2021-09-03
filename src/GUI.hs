@@ -45,17 +45,20 @@ import SDL
 import SDL.Font as SF
 import SDL.Framerate
 import SDL.Primitive
+import System.Process
 import Type
 import Widget
 
 data Body = Body
+  { _workPath :: FilePath
+  }
 
-bodyWidget' :: [BasePositon] -> Widget Body
-bodyWidget' i =
+bodyWidget' :: FilePath -> [BasePositon] -> Widget Body
+bodyWidget' fp i =
   Widget
     { _width = 100,
       _heigh = 100,
-      _model = Body,
+      _model = Body fp,
       _backgroundColor = 255,
       _frontColor = 90,
       _visible = True,
@@ -80,18 +83,19 @@ inRectangle (P v0@(V2 x0 y0)) (Rectangle (P vs) size) =
 -- v0 > fmap fromIntegral vs && v0 < fmap fromIntegral (vs + size)
 
 instance WidgetHandler Body where
-  handler es a = mapM_ handler1 es >> return ()
+  handler es a@Widget {..} = mapM_ handler1 es >> return ()
     where
       handler1 e = do
         case eventPayload e of
-          (MouseButtonEvent (MouseButtonEventData _ Pressed _ ButtonLeft _ pos)) -> do
-            allPos <- use $ bodyWidget % children'
-            liftIO $ writeFile "position.txt" (show $ fmap fst allPos)
-          -- undefined
-          --   cs <- use $ bodyWidget % children'
-          --   let newmw = modelWidget [length cs]
-          --   bodyWidget % children' %= ((fmap fromIntegral pos, SomeWidget newmw) :)
-          -- drag model
+          (MouseButtonEvent (MouseButtonEventData _ Pressed _ ButtonRight _ pos)) -> do
+            ls <- use (bodyWidget % children')
+            let vs = map (\(bp, sw) -> (Rectangle bp (V2 (sw ^. width') (sw ^. height')), sw ^. path')) ls
+                posIn = listToMaybe $ map snd $ filter (inRectangle pos . Prelude.fst) vs
+            case posIn of
+              Just [i] -> do
+                liftIO $ void $ forkIO $ void $ system $ "gedit " ++ _workPath _model ++ "/s" ++ show i ++ ".txt"
+                return ()
+              _ -> return ()
           (MouseMotionEvent (MouseMotionEventData _ _ [ButtonLeft] pos relPos)) -> do
             ls <- use (bodyWidget % children')
             let vs = map (\(bp, sw) -> (Rectangle bp (V2 (sw ^. width') (sw ^. height')), sw ^. path')) ls
@@ -100,6 +104,9 @@ instance WidgetHandler Body where
               Just [i] -> do
                 bodyWidget % children' % ix i % _1 %= (\(P v) -> P $ v + fmap fromIntegral relPos)
               _ -> return ()
+          (KeyboardEvent (KeyboardEventData _ Pressed _ (Keysym _ KeycodeA _))) -> do
+            allPos <- use $ bodyWidget % children'
+            liftIO $ writeFile (_workPath _model ++ "/position.txt") (show $ fmap fst allPos)
           UserEvent _ -> do
             ge <- asks _getUserEvent
             ue <- liftIO $ ge e
@@ -110,10 +117,10 @@ instance WidgetHandler Body where
           -- liftIO $ print d
           _ -> return ()
 
-makeUIState :: [BasePositon] -> UIState
-makeUIState i =
+makeUIState :: FilePath -> [BasePositon] -> UIState
+makeUIState fp i =
   UIState
-    { _bodyWidget = SomeWidget $ bodyWidget' i,
+    { _bodyWidget = SomeWidget $ bodyWidget' fp i,
       _focus = []
     }
 
@@ -324,8 +331,8 @@ appLoop1 = go
       delay_ man
       go
 
-main :: IO ()
-main = do
-  (r, f, m, pe, ge) <- initGUI
-  runReader (UIEnv r f m ge) $ runState (makeUIState (makeBP 5)) appLoop1
-  return ()
+-- main :: IO ()
+-- main = do
+--   (r, f, m, pe, ge) <- initGUI
+--   runReader (UIEnv r f m ge) $ runState (makeUIState "" (makeBP 5)) appLoop1
+--   return ()
