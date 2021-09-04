@@ -1,8 +1,8 @@
 # ubuntu build
 ## install libray
-sudo apt install graphviz 
-sudo apt install libsdl2-dev 
-sudo apt install libsdl2-gfx-dev
+sudo apt install graphviz  
+sudo apt install libsdl2-dev   
+sudo apt install libsdl2-gfx-dev  
 sudo apt install libsdl2-ttf-dev
 ## build
 cabal build  
