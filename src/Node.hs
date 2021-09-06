@@ -1,4 +1,7 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -14,11 +17,35 @@ import Control.Effect.Optics
 import Control.Exception
 import Control.Monad
 import Control.Tracer
+import Data.Aeson
+import Data.Aeson (ToJSON)
+import Data.Aeson.Types (FromJSON)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
+import Data.Text (Text)
+import GHC.Generics
+import GHC.Generics (Generic)
 import GUI
 import Graph
 import System.Environment
 import Text.Read
 import Widget
+
+data Node1 = Node1
+  { nodeName :: String,
+    nodeId :: Int,
+    nodeDescription :: Maybe String,
+    nodeInputNodes :: [(Int, Int)],
+    nodeScript :: String
+  }
+  deriving (Generic, FromJSON, ToJSON)
+
+data Graph1 = Graph1
+  { graphName :: String,
+    graphDescription :: Maybe String,
+    graphNodes :: [Node1]
+  }
+  deriving (Generic, FromJSON, ToJSON)
 
 data Node = Node String Int [(Int, Int)] deriving (Read, Show)
 
@@ -37,9 +64,24 @@ start = do
     ne <- case ne' of
       Left e -> error $ show $ "module is " ++ s ++ " " ++ show e
       Right v -> return v
+    -------------------------------------
+    nodeCon <- readFile (workDir ++ "/" ++ s ++ ".txt")
+    let node1 =
+          Node1
+            { nodeName = s,
+              Node.nodeId = a,
+              nodeDescription = Just $ s ++ " some description",
+              nodeInputNodes = b,
+              nodeScript = nodeCon
+            }
+    -- writeFile (workDir ++ "/" ++ s ++ ".json") undefined
+    -- BSL.writeFile (workDir ++ "/" ++ s ++ ".json") (encode node1)
+    -------------------------------------
     print ne
-    return (s, ne, a, b)
-  print ls
+    return ((s, ne, a, b), node1)
+  -- print ls
+  let graphv = Graph1 "example0" (Just "example0 description") (map snd ls)
+  BSL.writeFile (workDir ++ "/dag.json") (encode graphv)
   (r, f, m, pe, ge) <- initGUI
 
   -- fork graph worker
@@ -48,10 +90,10 @@ start = do
       runM $
         runState @GlobalState initGlobalState $ do
           -- init
-          forM_ ls $ \(a, b, c, d) -> insertNameNodeEdgeExpr a b c d
+          forM_ ls $ \((a, b, c, d), _) -> insertNameNodeEdgeExpr a b c d
           g <- use graph
           sendIO $ forkIO $ void $ tmain g
-          let tracer :: Has (State GlobalState :+: Lift IO) sig m => TraceRunGraph -> m ()
+          let tracer :: Has (State GlobalState Control.Algebra.:+: Lift IO) sig m => TraceRunGraph -> m ()
               tracer va = do
                 case va of
                   TraceCommand c -> sendIO $ print c
