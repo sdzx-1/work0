@@ -29,6 +29,7 @@ import GUI
 import Graph
 import System.Environment
 import Text.Read
+import Type (Expr)
 import Widget
 
 data Node1 = Node1
@@ -119,3 +120,23 @@ start = do
           Just a -> a
   runReader (UIEnv r f m ge) $ runState (makeUIState workDir poss) appLoop1
   threadDelay (10 ^ 6)
+
+type NodeId = Int
+
+type NodeState = String
+-- instance FromJSON Expr 
+-- instance ToJSON Expr
+
+data Command
+  = EvalDag Graph1
+  | InsertNode Node1
+  | RemoveNode Int
+  | EvalExpr Int Expr
+  -- deriving (Generic, FromJSON, ToJSON)
+
+data EvalState = Success | Failed 
+
+data Result 
+  = ExprEvalState 
+  | Error NodeId String
+  | EvalResult  NodeState
