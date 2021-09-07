@@ -9,6 +9,7 @@ module Graph where
 
 import B
 import Control.Algebra
+import Control.Carrier.Error.Either
 import Control.Carrier.Lift
 import Control.Carrier.State.Strict as S
 import Control.Carrier.Store hiding ((.=))
@@ -87,12 +88,21 @@ initGlobalState =
 
 defaultExpr = Elit (LitNum 10)
 
+type NodeId = Int
+
+data GraphError
+  = GraphInitError NodeId EvalError
+  | EvalGraphError NodeId EvalError
+  | NodeInputNotExist NodeId NodeId
+  | StrangeErrorNodeDeleted NodeId
+  deriving (Show)
+
 --- insert a node
 --- insert a edge of node
 --- name
 --- Expr  get handler , get args, match args with parent's node, get args --- parens't output IORef
 insertNameNodeEdgeExpr ::
-  Has (State GlobalState :+: Lift IO) sig m =>
+  Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m =>
   String -> -- name
   Expr -> -- expr
   Int -> -- nodeid
@@ -102,44 +112,48 @@ insertNameNodeEdgeExpr name code nodeid edges = do
   -- init code
   let m = Map.empty
       im = IntMap.empty
-  (a, b, _) <- sendIO $ Eval.runEval' m im (Eval.init' code)
-  -- create HandlerState, env and store ready
+  -- (a, b, _) <- sendIO $ Eval.runEval' m im (Eval.init' code)
+  res <- sendIO (Eval.runEval' m im (Eval.init' code))
+  case res of
+    Left ee -> throwError (GraphInitError nodeid ee)
+    Right (a, b, _) -> do
+      -- create HandlerState, env and store ready
 
-  -- create Output
-  outputRef <- sendIO $ newIORef defaultExpr
+      -- create Output
+      outputRef <- sendIO $ newIORef defaultExpr
 
-  -- TODO: check handler args match to egdes's length
+      -- TODO: check handler args match to egdes's length
 
-  -- create Inputs
-  -- 1. insert node
-  graph %= insNode (nodeid, name)
-  -- 2. insert edges
-  graph %= insEdges (fmap (\(a, b) -> (a, nodeid, b)) edges)
-  -- 2.1 update evalList
-  -- get new graph
-  newGraph <- use graph
-  -- update evalList
-  evalList .= topsort newGraph
-  -- 3. finds all source output IORef as Inputs
-  -- 3.1 sort edges by args position  (5,2) (7,3) (9,1) -> (9,1) (5,2) (7,3)
-  let edges' = L.sortBy (\(_, a) (_, b) -> compare a b) edges
-  --   assert  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
-  sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
-  --  3.2 find all source nodeid IORef
-  inputs <-
-    forM edges' $ \(sourceNodeid, _) -> do
-      hss <- use handlersState
-      maybe (error "nodeid Not find") (return . _output) (Map.lookup sourceNodeid hss)
+      -- create Inputs
+      -- 1. insert node
+      graph %= insNode (nodeid, name)
+      -- 2. insert edges
+      graph %= insEdges (fmap (\(a, b) -> (a, nodeid, b)) edges)
+      -- 2.1 update evalList
+      -- get new graph
+      newGraph <- use graph
+      -- update evalList
+      evalList .= topsort newGraph
+      -- 3. finds all source output IORef as Inputs
+      -- 3.1 sort edges by args position  (5,2) (7,3) (9,1) -> (9,1) (5,2) (7,3)
+      let edges' = L.sortBy (\(_, a) (_, b) -> compare a b) edges
+      --   assert  (5,2) (5,3) (5,1) -> (5,1) (5,2) (5,3)
+      sendIO $ print $ assert (and $ zipWith (==) [1 ..] (fmap snd edges')) "assert success"
+      --  3.2 find all source nodeid IORef
+      inputs <-
+        forM edges' $ \(sourceNodeid, _) -> do
+          hss <- use handlersState
+          maybe (throwError $ NodeInputNotExist nodeid sourceNodeid) (return . _output) (Map.lookup sourceNodeid hss)
 
-  -- make HandlerState
-  let hs =
-        HandlerState
-          { _handlerEnv = b,
-            _handlerStore = a,
-            _inputs = inputs,
-            _output = outputRef
-          }
-  handlersState %= Map.insert nodeid hs
+      -- make HandlerState
+      let hs =
+            HandlerState
+              { _handlerEnv = b,
+                _handlerStore = a,
+                _inputs = inputs,
+                _output = outputRef
+              }
+      handlersState %= Map.insert nodeid hs
 
 data Command
   = RunOnce
@@ -151,7 +165,7 @@ data TraceRunGraph
   | TraceResult TraceGraphEval
   deriving (Show)
 
-runGraph :: Has (State GlobalState :+: Lift IO) sig m => Chan Command -> Tracer m TraceRunGraph -> m ()
+runGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m => Chan Command -> Tracer m TraceRunGraph -> m ()
 runGraph chan tracer =
   sendIO (readChan chan) >>= \case
     Terminal -> do
@@ -194,34 +208,40 @@ traceFun m im e tracer i = do
         result = e
       }
 
-evalGraph :: Has (State GlobalState :+: Lift IO) sig m => Tracer m TraceGraphEval -> m ()
+evalGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m => Tracer m TraceGraphEval -> m ()
 evalGraph tracer = do
   elist <- use evalList
   forM_ elist $ \i -> do
-    hs <- uses handlersState (fromMaybe (error "node not fing") . Map.lookup i)
-    -- get all inputs
-    inputs <- sendIO $ mapM readIORef (hs ^. inputs)
-    if any isSkip inputs
-      then do
-        traceFun (hs ^. handlerEnv) (hs ^. handlerStore) Skip tracer i
-        sendIO $ writeIORef (hs ^. output) Skip
-      else do
-        sendIO $ print $ "------node" ++ show i ++ " start------"
-        -- eval node code
-        (a, b, c) <-
-          sendIO $
-            Eval.runEval'
-              (hs ^. handlerEnv)
-              (hs ^. handlerStore)
-              (AppFun (Elit $ LitSymbol "handler") inputs)
-        ------------------ trace grap eval result
-        traceFun b a c tracer i
-        ------------------
-        -- write output
-        sendIO $ writeIORef (hs ^. output) c
-        -- update HandlerState
-        let newhs = hs {_handlerEnv = b, _handlerStore = a}
-        -- update global state
-        handlersState %= Map.insert i newhs
+    res <- uses handlersState (Map.lookup i)
+    case res of
+      Nothing -> throwError (StrangeErrorNodeDeleted i)
+      Just hs -> do
+        -- get all inputs
+        inputs <- sendIO $ mapM readIORef (hs ^. inputs)
+        if any isSkip inputs
+          then do
+            traceFun (hs ^. handlerEnv) (hs ^. handlerStore) Skip tracer i
+            sendIO $ writeIORef (hs ^. output) Skip
+          else do
+            sendIO $ print $ "------node" ++ show i ++ " start------"
+            -- eval node code
+            res <-
+              sendIO $
+                Eval.runEval'
+                  (hs ^. handlerEnv)
+                  (hs ^. handlerStore)
+                  (AppFun (Elit $ LitSymbol "handler") inputs)
+            case res of
+              Left ee -> throwError (EvalGraphError i ee)
+              Right (a, b, c) -> do
+                ------------------ trace grap eval result
+                traceFun b a c tracer i
+                ------------------
+                -- write output
+                sendIO $ writeIORef (hs ^. output) c
+                -- update HandlerState
+                let newhs = hs {_handlerEnv = b, _handlerStore = a}
+                -- update global state
+                handlersState %= Map.insert i newhs
+                -- sendIO $ print $ "------node" ++ show i ++ " finish-----"
 
--- sendIO $ print $ "------node" ++ show i ++ " finish-----"

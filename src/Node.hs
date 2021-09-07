@@ -6,6 +6,7 @@ module Node where
 
 import B
 import Control.Algebra
+import Control.Carrier.Error.Either
 import Control.Carrier.Lift
 import Control.Carrier.Reader
 import Control.Carrier.State.Strict
@@ -45,7 +46,7 @@ start = do
   -- fork graph worker
   forkIO $
     void $
-      runM $
+      runError @GraphError $
         runState @GlobalState initGlobalState $ do
           -- init
           forM_ ls $ \(a, b, c, d) -> insertNameNodeEdgeExpr a b c d

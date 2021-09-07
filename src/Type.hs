@@ -60,6 +60,10 @@ data EvalError
   | AddTypeError [Expr]
   | LessTypeError [Expr]
   | NeverHappened
+  | VarNotDefined String
+  | UnSpportAppFun String
+  | UnallocatedAddr
+  | UninitializedAddr
   deriving (Show)
 
 instance Show Expr where

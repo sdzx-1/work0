@@ -2,11 +2,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Eval where
 
 import B
-import Control.Carrier.Lift
+import Control.Algebra
+import Control.Carrier.Error.Either
 import Control.Carrier.State.Strict as S
 import Control.Carrier.Store
 import Control.Concurrent
@@ -24,7 +26,7 @@ import System.Random
 import Type
 
 evaLit ::
-  (Has (Env PAddr) sig m, HasLabelled Store (Store PAddr Expr) sig m, Has (Lift IO) sig m) => Lit -> m Expr
+  (Has (Env PAddr :+: Error EvalError) sig m, HasLabelled Store (Store PAddr Expr) sig m, MonadIO m) => Lit -> m Expr
 evaLit = \case
   LitSymbol n -> do
     a <- lookupEnv n
@@ -39,7 +41,7 @@ evaLit = \case
   other -> pure $ Elit other
 
 evalExpr ::
-  (Has (Env PAddr) sig m, HasLabelled Store (Store PAddr Expr) sig m, Has (Lift IO) sig m) => Expr -> m Expr
+  (Has (Env PAddr :+: Error EvalError) sig m, HasLabelled Store (Store PAddr Expr) sig m, MonadIO m) => Expr -> m Expr
 evalExpr = \case
   Exprs ls -> last <$> mapM evalExpr ls
   For e1 e2 e3 e4 -> do
@@ -70,7 +72,7 @@ evalExpr = \case
   AppFun v args -> do
     evalExpr v >>= \case
       Fun names1 e -> do
-        when (length names1 /= length args) (error (show args))
+        when (length names1 /= length args) (throwError ArgsNotMatch)
         eargs <- mapM evalExpr args
         addrs <- forM (zip names1 eargs) $ \(n, e) -> do
           n' <- alloc n
@@ -79,23 +81,23 @@ evalExpr = \case
         binds (zip names1 addrs) (evalExpr e)
       BuildInFunction f -> do
         eargs <- mapM evalExpr args
-        sendIO (f eargs) >>= \case
-          Left e -> error (show e)
+        liftIO (f eargs) >>= \case
+          Left e -> throwError e
           Right v -> return v
-      o -> error (show (AppFun v args))
+      o -> throwError $ UnSpportAppFun (show (AppFun v args))
   Assignment name e -> do
     a <- lookupEnv name
     e' <- evalExpr e
-    maybe (error (show name)) (.= e') a
+    maybe (throwError $ VarNotDefined (show name)) (.= e') a
     return e'
   BuildInFunction f -> return (BuildInFunction f)
   Skip -> return Skip
 
-runEval :: Expr -> IO (PStore Expr, (Map Name PAddr, Expr))
+runEval :: Expr -> IO (Either EvalError (Map Name PAddr, (PStore Expr, Expr)))
 runEval expr =
-  runM @IO
-    . runStore
+  runError @EvalError
     . runEnv
+    . runStore
     $ evalExpr expr
 
 add :: [Expr] -> IO (Either EvalError Expr)
@@ -131,80 +133,26 @@ init' e =
     ]
       ++ [e]
 
+runEval' ::
+  Map Name PAddr ->
+  IntMap (Maybe Expr) ->
+  Expr ->
+  IO
+    ( Either
+        EvalError
+        (IntMap (Maybe Expr), Map Name PAddr, Expr)
+    )
 runEval' env store expr = do
-  (PStore a, (b, c)) <-
-    runM @IO
-      . runStore' store
+  ( runError @EvalError
       . runEnv' env
+      . runStore' store
       $ evalExpr expr
-  let ls = Map.toList b
-      t = Prelude.map (\(name, PAddr i) -> (i, join $ IntMap.lookup i a)) ls
-      nim = IntMap.fromList t
-  return (nim, b, c)
-
-type GlobalState = Map String (Map Name PAddr, IntMap (Maybe Expr))
-
-data Command
-  = Push Expr
-  | PushByName String Expr
-  | Terminal
-  deriving (Show)
-
-tmain = do
-  undefined
-
-workflow :: (Has (State GlobalState) sig m, Has (Lift IO) sig m) => [(String, Expr)] -> Chan Command -> m ()
-workflow codes chan = do
-  forM_ codes $ \(name, code) -> do
-    let m = Map.empty
-        im = IntMap.empty
-    --- init
-    (a, b, _) <- sendIO $ runEval' m im (init' code)
-    S.modify @GlobalState $ Map.insert name (b, a)
-
-  m <- S.get @GlobalState
-  let names = Prelude.map fst codes
-  go names chan
-  where
-    go :: (Has (State GlobalState) sig m, Has (Lift IO) sig m) => [String] -> Chan Command -> m ()
-    go names chan = do
-      sendIO (readChan chan) >>= \case
-        Push e -> do
-          foldM_
-            ( \b name -> do
-                (m, im) <- fromMaybe (error "never") <$> S.gets @GlobalState (Map.lookup name)
-                sendIO $ print $ "eval node: " ++ name
-                (a, b, c) <- sendIO $ runEval' m im (AppFun (Elit $ LitSymbol "handler") [b])
-                S.modify (Map.insert name (b, a))
-                return c
-            )
-            e
-            names
-          go names chan
-        PushByName name e -> do
-          (m, im) <- fromMaybe (error "never") <$> S.gets @GlobalState (Map.lookup name)
-          (a, b, c) <- sendIO $ runEval' m im e
-          S.modify (Map.insert name (b, a))
-          go names chan
-        Terminal -> do
-          s <- S.get @GlobalState
-          sendIO $ print s
-
-k = do
-  dis <- listDirectory "work"
-  let names = Prelude.map ("work/" ++) $ L.sort dis
-  -- let names = ["work/s.txt", "work/s1.txt"]
-  es <- Prelude.map runCalc <$> mapM readFile names
-  chan <- newChan
-  forkIO $ void $ runM $ runState @GlobalState Map.empty $ workflow (zip names es) chan
-
-  let go i = do
-        print "write chan"
-        writeChan chan (Push (Elit (LitNum 40)))
-        when (i `mod` 5 == 0) (writeChan chan (PushByName "work/s1.txt" (Assignment (Name "count") (Elit (LitNum 0)))))
-        if i == 20
-          then writeChan chan Terminal
-          else do
-            threadDelay (10 ^ 6)
-            go (i + 1)
-  go 0
+    )
+    >>= ( \case
+            Left se -> return $ Left se
+            Right (b, (PStore a, c)) -> do
+              let ls = Map.toList b
+                  t = Prelude.map (\(name, PAddr i) -> (i, join $ IntMap.lookup i a)) ls
+                  nim = IntMap.fromList t
+              return $ Right (nim, b, c)
+        )
