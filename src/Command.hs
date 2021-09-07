@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
@@ -9,6 +10,12 @@ module Command where
 
 import Data.Aeson
 import GHC.Generics
+
+type GarphId = Int
+
+type NodeId = Int
+
+type Name = String
 
 data Node = Node
   { nodeName :: String,
@@ -26,25 +33,36 @@ data Graph = Graph
   }
   deriving (Generic, FromJSON, ToJSON)
 
-type GraphNumber = Int
-
-type NodeId = Int
-
-type Name = String
-
 data Command
-  = CreateGraph Graph
-  | RemoveGraph GraphNumber
-  | GraphCommend GraphNumber GraphCommand
-  | NodeCommand GraphNumber NodeId NodeCommand
+  = CreateGraph
+      {createGraph :: Graph}
+  | RemoveGraph
+      {removeGarphId :: GarphId}
+  | GraphCommand
+      { graphId :: GarphId,
+        graphCommand :: GraphCommand
+      }
+  | NodeCommand
+      { graphId :: GarphId,
+        nodeId :: NodeId,
+        nodeCommand :: NodeCommand
+      }
   deriving (Generic, FromJSON, ToJSON)
 
 data GraphCommand
-  = InsertNode Node
-  | RemoveNode NodeId [(NodeId, Int)]
+  = InsertNode {insertNode :: Node}
+  | RemoveNode
+      { nodeId :: NodeId,
+        dependNodeSource :: [(NodeId, Int)]
+      }
   deriving (Generic, FromJSON, ToJSON)
 
 data NodeCommand
   = LookUpVar String
   | EvalExpr String
+  deriving (Generic, FromJSON, ToJSON)
+
+data Result
+  = Success String
+  | Failed String
   deriving (Generic, FromJSON, ToJSON)
