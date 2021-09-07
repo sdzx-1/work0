@@ -34,11 +34,10 @@ start = do
   let ns = Prelude.map (read @Node) (lines g)
 
   ls <- forM ns $ \(Node s a b) -> do
-    ne' <- try @SomeException $ runCalc <$> readFile (workDir ++ "/" ++ s ++ ".txt")
+    ne' <- runCalc <$> readFile (workDir ++ "/" ++ s ++ ".txt")
     ne <- case ne' of
       Left e -> error $ show $ "module is " ++ s ++ " " ++ show e
       Right v -> return v
-    print ne
     return (s, ne, a, b)
   print ls
   (r, f, m, pe, ge) <- initGUI

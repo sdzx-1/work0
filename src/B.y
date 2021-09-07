@@ -6,30 +6,31 @@ import qualified Data.Text as T
 import Name
 }
 
+%monad { E } { thenE } { returnE }
 %name calc
 %tokentype { Token }
 
 %token 
-  'var'      { KeyWord "var" }
-  'function' { KeyWord "function"}
-  'return'   { KeyWord "return"}
-  'for'      { KeyWord "for"}
-  'if'       { KeyWord "if" }
-  'else'     { KeyWord "else" }
+  'var'      { KeyWord _ "var" }
+  'function' { KeyWord _ "function"}
+  'return'   { KeyWord _ "return"}
+  'for'      { KeyWord _ "for"}
+  'if'       { KeyWord _ "if" }
+  'else'     { KeyWord _ "else" }
 
-  ';'  { Separators ";" }
-  '+'  { Separators "+" }
-  '('  { Separators "(" }
-  ')'  { Separators ")" }
-  '<'  { Separators "<" }
-  '{'  { Separators "{" }
-  '}'  { Separators "}" }
-  ','  { Separators "," }
-  '='  { Separators "=" }
+  ';'  { Separators _ ";" }
+  '+'  { Separators _ "+" }
+  '('  { Separators _ "(" }
+  ')'  { Separators _ ")" }
+  '<'  { Separators _ "<" }
+  '{'  { Separators _ "{" }
+  '}'  { Separators _ "}" }
+  ','  { Separators _ "," }
+  '='  { Separators _ "=" }
 
-  num    { Number $$ }
-  string { String $$ }
-  var    { A.Var $$ }
+  num    { Number _ $$ }
+  string { String _ $$ }
+  var    { A.Var  _ $$ }
 
 %% 
 
@@ -75,9 +76,28 @@ Lit :: { Lit }
   | var { LitSymbol (name $ T.pack $1)  }
 
 {
-runCalc :: String -> Expr
-runCalc = calc . alexScanTokens
 
-happyError :: [Token] -> a
-happyError tks = error ("Parse error " ++ show (take 20 tks) ++ " \n")
+data E a = Ok a | Failed String
+
+thenE :: E a -> (a -> E b) -> E b
+m `thenE` k = case m of 
+    Ok a     -> k a
+    Failed e -> Failed e
+
+returnE :: a -> E a
+returnE a = Ok a
+
+failE :: String -> E a
+failE err = Failed err
+
+
+runCalc :: String -> Either String Expr
+runCalc s = case  calc (alexScanTokens s) of 
+             Ok a -> Right a 
+             Failed s -> Left s
+
+happyError :: [Token] -> E a
+happyError tks = case tks of 
+    [] -> Failed "parse error: input null" 
+    t:_ -> Failed $ "parse error: " ++ show t
 }

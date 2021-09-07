@@ -8,7 +8,7 @@ import Data.Word(Word8)
 }
 
 
-%wrapper "basic"
+%wrapper "posn"
 
 $digit = 0-9			-- digits
 $sign = [\+ \-]
@@ -24,12 +24,12 @@ tokens :-
 
   $white+				;
   "--".*				;
-  @keywords                         { \s -> KeyWord s }
-  $alpha [$alpha $digit \_ \']*		{ \s -> Var s }
-  @separators                       { \s -> Separators s}
-  $sign? $digit+                    { \s -> Number $ read s}
-  $sign? $digit+ \. $digit+         { \s -> Number $ read s }
-  \"($alpha)*\"                     { \s -> String $ init $ tail s}
+  @keywords                         { \(AlexPn _ l c) s -> KeyWord    (Posn l c) s }
+  $alpha [$alpha $digit \_ \']*		{   \(AlexPn _ l c) s -> Var        (Posn l c) s }
+  @separators                       { \(AlexPn _ l c) s -> Separators (Posn l c) s}
+  $sign? $digit+                    { \(AlexPn _ l c) s -> Number     (Posn l c) $ read s}
+  $sign? $digit+ \. $digit+         { \(AlexPn _ l c) s -> Number     (Posn l c) $ read s }
+  \"($alpha)*\"                     { \(AlexPn _ l c) s -> String     (Posn l c) $ init $ tail s}
 
 
 
@@ -37,13 +37,18 @@ tokens :-
 {
 -- Each action has type :: String -> Token
 
+data Posn = Posn {
+  line :: Int ,
+  column :: Int
+} deriving (Eq,Show)
+
 -- The token type:
 data Token
-  = String String
-  | Number Double
-  | Separators String
-  | KeyWord String
-  | Var String
+  = String Posn String
+  | Number Posn Double
+  | Separators Posn String
+  | KeyWord Posn String
+  | Var Posn String
   deriving (Eq,Show)
 
 main = do
