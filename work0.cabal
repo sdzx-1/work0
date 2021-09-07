@@ -34,6 +34,7 @@ library
                    , GUI
                    , Node
                    , Manager
+                   , Command
     -- Modules included in this library but not exported.
     -- other-modules:
 
@@ -58,6 +59,7 @@ library
                    , sdl2
                    , sdl2-ttf
                    , sdl2-gfx
+                   , aeson
     hs-source-dirs:   src
     default-language: Haskell2010
     Build-tools: alex, happy
