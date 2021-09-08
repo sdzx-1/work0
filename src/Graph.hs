@@ -40,7 +40,7 @@ import Data.Maybe
 import Data.Typeable
 import qualified Eval
 import GHC.IOArray (newIOArray)
-import Name
+import Name as N
 import Optics (makeLenses, (^.))
 import System.Directory
 import System.Process
@@ -98,6 +98,9 @@ data GraphError
   | NodeInputNotExist NodeId NodeId
   | StrangeErrorNodeDeleted NodeId
   | NodeIdExisted NodeId
+  | NotDefinedHandler
+  | HandlerArgsNotMatch
+  | HandlerDefinedTypeError
   deriving (Show)
 
 --- insert a node
@@ -125,7 +128,17 @@ insertNameNodeEdgeExpr name code nodeid edges = do
       -- create Output
       outputRef <- sendIO $ newIORef defaultExpr
 
-      -- TODO: check handler args match to egdes's length
+      let rv = do
+            PAddr tv <- Map.lookup (N.name "handler") b
+            IntMap.lookup tv a
+      case join rv of
+        Nothing -> throwError NotDefinedHandler
+        Just ex ->
+          case ex of
+            Fun ls _ ->
+              when (length ls /= length edges) $
+                throwError HandlerArgsNotMatch
+            _ -> throwError HandlerDefinedTypeError
       g <- use graph
       when (gelem nodeid g) (throwError (NodeIdExisted nodeid))
       -- create Inputs
