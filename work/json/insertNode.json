@@ -1,0 +1,1 @@
+{"graphId":1,"graphCommand":{"insertNode":{"nodeScript":" function handler(a){ a = a + 1; logger(a); return(a) }","nodeId":1,"nodeName":"Source","nodeDescription":null,"nodeInputNodes":[[0,1]]},"tag":"InsertNode"},"tag":"GraphCommand"}

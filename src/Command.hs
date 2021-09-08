@@ -84,7 +84,7 @@ defCreateGraph =
                   nodeId = 0,
                   nodeDescription = Nothing,
                   nodeInputNodes = [],
-                  nodeScript = "var a = 0; function handler(){ a = a + 1; logger(a); return(1) }"
+                  nodeScript = "var a = 0; function handler(){ a = a + 1; logger(a); return(a) }"
                 }
             ]
         }
@@ -92,7 +92,7 @@ defCreateGraph =
 
 defRemoveGraph = RemoveGraph 1
 
--- >>> BSL.writeFile "nodeEval.json" (encode defNodeCommand1)
+-- >>> BSL.writeFile "work/insertNode.json" (encode defInsertNode)
 defNodeCommand =
   NodeCommand
     { graphId = 1,
@@ -105,4 +105,18 @@ defNodeCommand1 =
     { graphId = 1,
       nodeId = 0,
       nodeCommand = EvalExpr "a = 10"
+    }
+
+defInsertNode =
+  GraphCommand
+    { graphId = 1,
+      graphCommand =
+        InsertNode $
+          Node
+            { nodeName = "Source",
+              nodeId = 1,
+              nodeDescription = Nothing,
+              nodeInputNodes = [(0,1)],
+              nodeScript = " function handler(a){ a = a + 1; logger(a); return(a) }"
+            }
     }

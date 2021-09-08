@@ -26,6 +26,7 @@ import Data.Graph.Inductive
     Graph (mkGraph),
     insEdges,
     insNode,
+    prettyPrint,
     topsort,
   )
 import Data.Graph.Inductive.Dot
@@ -132,6 +133,7 @@ insertNameNodeEdgeExpr name code nodeid edges = do
       -- 2.1 update evalList
       -- get new graph
       newGraph <- use graph
+      sendIO $ prettyPrint newGraph
       -- update evalList
       evalList .= topsort newGraph
       -- 3. finds all source output IORef as Inputs
@@ -294,7 +296,7 @@ evalGraph tracer = do
             traceFun (hs ^. handlerEnv) (hs ^. handlerStore) Skip tracer i
             sendIO $ writeIORef (hs ^. output) Skip
           else do
-            sendIO $ print $ "------node" ++ show i ++ " start------"
+            -- sendIO $ print $ "------node" ++ show i ++ " start------"
             -- eval node code
             res <-
               sendIO $
