@@ -41,9 +41,9 @@ data Graph = Graph
 
 data Command
   = CreateGraph
-      {createGraph :: Graph} -- POST /api/creategraph (json Graph)
+      {createGraph :: Graph}
   | RemoveGraph
-      {removeGarphId :: GraphId} -- DELETE /api/graphid/1
+      {removeGarphId :: GraphId}
   | GraphCommand
       { graphId :: GraphId,
         graphCommand :: GraphCommand
@@ -56,7 +56,7 @@ data Command
   deriving (Generic, FromJSON, ToJSON)
 
 data GraphCommand
-  = InsertNode {insertNode :: Node} -- POST /api/graphid/1/insertnode (json Node)
+  = InsertNode {insertNode :: Node}
   | RemoveNode
       { nodeId :: NodeId,
         dependNodeSource :: [(NodeId, Int)]
@@ -64,8 +64,8 @@ data GraphCommand
   deriving (Generic, FromJSON, ToJSON)
 
 data NodeCommand
-  = LookUpVar String -- GET   /api/graphid/1/nodeid/0/getvar/a
-  | EvalExpr String -- POST  /api/graphid/1/nodeid/0/evalexpr  (json scriptString)
+  = LookUpVar String
+  | EvalExpr String
   deriving (Generic, FromJSON, ToJSON)
 
 data Result
