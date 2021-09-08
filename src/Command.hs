@@ -10,6 +10,7 @@ module Command where
 
 import Data.Aeson
 import GHC.Generics
+import Data.ByteString.Lazy as BSL
 
 type GraphId = Int
 
@@ -32,6 +33,25 @@ data Graph = Graph
     graphNodes :: [Node]
   }
   deriving (Generic, FromJSON, ToJSON)
+
+-- >>> BSL.writeFile "test.json" (encode defCommand)
+defCommand =
+  CreateGraph
+    ( Graph
+        { graphName = "test"
+        , graphDescription = Just "something"
+        , graphNodes = [
+          Node {
+            nodeName = "Source",
+            nodeId = 0 ,
+            nodeDescription = Nothing ,
+            nodeInputNodes = [],
+            nodeScript = "function handler(){ logger(1); return(1) }"
+
+          }
+        ]
+        }
+    )
 
 data Command
   = CreateGraph
@@ -66,3 +86,7 @@ data Result
   = Success String
   | Failed String
   deriving (Generic, FromJSON, ToJSON)
+
+type Id = Int
+
+data Client a = Client Id a

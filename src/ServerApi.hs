@@ -11,7 +11,7 @@ import Data.Swagger.Internal.Schema (ToSchema)
 import Servant
 import Servant.Swagger
 
-type ServerApi = "command" :> "clientid" :> Capture "clientid" Int :> ReqBody '[JSON] Command :> Post '[JSON] [Result]
+type ServerApi = "command" :> "clientid" :> Capture "clientid" Int :> ReqBody '[JSON] Command :> Post '[JSON] Result
 
 instance ToSchema Node
 

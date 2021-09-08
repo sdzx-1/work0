@@ -45,10 +45,6 @@ newtype Manager = Manager
 
 makeLenses ''Manager
 
-type Id = Int
-
-data Client a = Client Id a
-
 managerFrontThread ::
   Manager ->
   Chan (Client Command) ->
@@ -64,7 +60,7 @@ managerFrontThread manager command result = do
       -- expr parser
       let ls = forM (graphNodes gr) $ \(Node a b _ c d) -> do
             case runCalc d of
-              Left s -> Left s
+              Left s -> Left $ "nodeName: " ++ a ++ " nodeId: " ++ show b++ " "++ s
               Right ex -> Right (a, ex, b, c)
       case ls of
         Left s ->
