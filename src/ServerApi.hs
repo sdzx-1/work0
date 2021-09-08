@@ -13,6 +13,13 @@ import Servant.Swagger
 
 type ServerApi = "command" :> "clientid" :> Capture "clientid" Int :> ReqBody '[JSON] Command :> Post '[JSON] Result
 
+type Api =
+  "api" :> "graphs" :> ReqBody '[JSON] Graph :> Post '[JSON] Result
+    :<|> "api" :> "graphs" :> Capture "graph id" Int :> Delete '[JSON] Result
+    :<|> "api" :> "graphs" :> Capture "graph id" Int :> ReqBody '[JSON] Node :> Post '[JSON] Result
+    :<|> "api" :> "graphs" :> Capture "graph id" Int :> "nodes" :> Capture "node id" Int :> "getvar" :> Capture "var name" String :> Get '[JSON] Result
+    :<|> "api" :> "graphs" :> Capture "graph id" Int :> "nodes" :> Capture "node id" Int :> "evalexpr" :> ReqBody '[JSON] Script :> Post '[JSON] Result
+
 instance ToSchema Node
 
 instance ToSchema Graph
@@ -25,8 +32,10 @@ instance ToSchema Command
 
 instance ToSchema Result
 
+instance ToSchema Script
+
 mySwagger :: Swagger
-mySwagger = toSwagger (Proxy :: Proxy ServerApi)
+mySwagger = toSwagger (Proxy :: Proxy Api)
 
 sgi :: IO ()
 sgi = do

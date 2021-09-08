@@ -16,6 +16,34 @@ import Servant
 import Servant.Server
 import ServerApi
 
+api1 :: Proxy Api
+api1 = Proxy
+
+server1 :: Chan (Client Command) -> TChan (Client Result) -> Server Api
+server1 comChan resultTChan =
+  handler1
+    :<|> handler2
+    :<|> handler3
+    :<|> handler4
+    :<|> handler5
+  where
+    fun comd =
+      liftIO $ do
+        writeChan comChan (Client 0 comd)
+        atomically $ do
+          Client cid result <-
+            readTChan
+              resultTChan
+          if cid == 0
+            then return result
+            else retry
+
+    handler1 g = fun (CreateGraph g)
+    handler2 i = fun (RemoveGraph i)
+    handler3 i n = fun (GraphCommand i (InsertNode n))
+    handler4 i n s = fun (NodeCommand i n (LookUpVar s))
+    handler5 i n (Script s) = fun (NodeCommand i n (EvalExpr s))
+
 api :: Proxy ServerApi
 api = Proxy
 

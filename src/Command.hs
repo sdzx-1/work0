@@ -18,6 +18,11 @@ type NodeId = Int
 
 type Name = String
 
+newtype Script = Script
+  { script :: String
+  }
+  deriving (Generic, FromJSON, ToJSON)
+
 data Node = Node
   { nodeName :: String,
     nodeId :: Int,
@@ -36,9 +41,9 @@ data Graph = Graph
 
 data Command
   = CreateGraph
-      {createGraph :: Graph}
+      {createGraph :: Graph} -- POST /api/creategraph (json Graph)
   | RemoveGraph
-      {removeGarphId :: GraphId}
+      {removeGarphId :: GraphId} -- DELETE /api/graphid/1
   | GraphCommand
       { graphId :: GraphId,
         graphCommand :: GraphCommand
@@ -51,7 +56,7 @@ data Command
   deriving (Generic, FromJSON, ToJSON)
 
 data GraphCommand
-  = InsertNode {insertNode :: Node}
+  = InsertNode {insertNode :: Node} -- POST /api/graphid/1/insertnode (json Node)
   | RemoveNode
       { nodeId :: NodeId,
         dependNodeSource :: [(NodeId, Int)]
@@ -59,8 +64,8 @@ data GraphCommand
   deriving (Generic, FromJSON, ToJSON)
 
 data NodeCommand
-  = LookUpVar String
-  | EvalExpr String
+  = LookUpVar String -- GET   /api/graphid/1/nodeid/0/getvar/a
+  | EvalExpr String -- POST  /api/graphid/1/nodeid/0/evalexpr  (json scriptString)
   deriving (Generic, FromJSON, ToJSON)
 
 data Result
@@ -116,7 +121,7 @@ defInsertNode =
             { nodeName = "Source",
               nodeId = 1,
               nodeDescription = Nothing,
-              nodeInputNodes = [(0,1)],
+              nodeInputNodes = [(0, 1)],
               nodeScript = " function handler(a){ a = a + 1; logger(a); return(a) }"
             }
     }
