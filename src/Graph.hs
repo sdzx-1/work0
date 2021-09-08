@@ -24,6 +24,7 @@ import Control.Tracer
 import Data.Graph.Inductive
   ( Gr,
     Graph (mkGraph),
+    gelem,
     insEdges,
     insNode,
     prettyPrint,
@@ -96,6 +97,7 @@ data GraphError
   | EvalGraphError NodeId EvalError
   | NodeInputNotExist NodeId NodeId
   | StrangeErrorNodeDeleted NodeId
+  | NodeIdExisted NodeId
   deriving (Show)
 
 --- insert a node
@@ -124,7 +126,8 @@ insertNameNodeEdgeExpr name code nodeid edges = do
       outputRef <- sendIO $ newIORef defaultExpr
 
       -- TODO: check handler args match to egdes's length
-
+      g <- use graph
+      when (gelem nodeid g) (throwError (NodeIdExisted nodeid))
       -- create Inputs
       -- 1. insert node
       graph %= insNode (nodeid, name)
