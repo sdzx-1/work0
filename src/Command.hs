@@ -11,7 +11,7 @@ module Command where
 import Data.Aeson
 import GHC.Generics
 
-type GarphId = Int
+type GraphId = Int
 
 type NodeId = Int
 
@@ -37,13 +37,13 @@ data Command
   = CreateGraph
       {createGraph :: Graph}
   | RemoveGraph
-      {removeGarphId :: GarphId}
+      {removeGarphId :: GraphId}
   | GraphCommand
-      { graphId :: GarphId,
+      { graphId :: GraphId,
         graphCommand :: GraphCommand
       }
   | NodeCommand
-      { graphId :: GarphId,
+      { graphId :: GraphId,
         nodeId :: NodeId,
         nodeCommand :: NodeCommand
       }

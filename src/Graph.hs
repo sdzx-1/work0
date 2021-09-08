@@ -15,6 +15,7 @@ import Control.Carrier.State.Strict as S
 import Control.Carrier.Store hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.Chan
+import Control.Concurrent.MVar
 import Control.Effect.Optics
 import Control.Effect.State.Labelled
 import Control.Exception.Base (assert)
@@ -155,17 +156,22 @@ insertNameNodeEdgeExpr name code nodeid edges = do
               }
       handlersState %= Map.insert nodeid hs
 
-data Command
+data EvalCommand
   = RunOnce
   | Terminal
   deriving (Show)
 
 data TraceRunGraph
-  = TraceCommand Command
+  = TraceCommand EvalCommand
   | TraceResult TraceGraphEval
   deriving (Show)
 
-runGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m => Chan Command -> Tracer m TraceRunGraph -> m ()
+data EvalResult
+  = Successed String
+  | Failed String
+  deriving (Show)
+
+runGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m => Chan EvalCommand -> Tracer m TraceRunGraph -> m ()
 runGraph chan tracer =
   sendIO (readChan chan) >>= \case
     Terminal -> do
@@ -175,6 +181,27 @@ runGraph chan tracer =
         print s
         print "--------------------------------------------------------"
     RunOnce -> evalGraph (contramap TraceResult tracer) >> runGraph chan tracer
+
+runGraph' ::
+  Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m =>
+  MVar EvalCommand ->
+  MVar EvalResult ->
+  Tracer m TraceRunGraph ->
+  m ()
+runGraph' mvar rmvar tracer =
+  sendIO (tryTakeMVar mvar) >>= \case
+    Nothing -> do
+      sendIO $ threadDelay (10 ^ 6)
+      evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+    Just x -> case x of
+      Terminal -> do
+        s <- S.get @GlobalState
+        sendIO $ do
+          print "----------------------GlobaseState----------------------"
+          print s
+          print "--------------------------------------------------------"
+          putMVar rmvar (Successed "terminal successed")
+      RunOnce -> evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
 
 data TraceGraphEval = GR
   { nodeId :: Int,
@@ -243,5 +270,5 @@ evalGraph tracer = do
                 let newhs = hs {_handlerEnv = b, _handlerStore = a}
                 -- update global state
                 handlersState %= Map.insert i newhs
-                -- sendIO $ print $ "------node" ++ show i ++ " finish-----"
 
+-- sendIO $ print $ "------node" ++ show i ++ " finish-----"
