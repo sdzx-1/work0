@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
@@ -101,7 +102,27 @@ managerFrontThread manager command result = do
           modifyIORef mref (Map.delete n)
           awtc result clientId (Success (show res))
       managerFrontThread manager command result
-    GraphCommand n gc -> undefined
+    GraphCommand n gc -> do
+      let mref = manager ^. graphs
+      mmap <- readIORef mref
+      case Map.lookup n mmap of
+        Nothing -> awtc result clientId (Failed $ "graph " ++ show n ++ " not exist")
+        Just (a, b, c) -> do
+          runState <- tryTakeMVar c
+          case runState of
+            -- graph thread terminate , maybe error happened
+            Just rr -> awtc result clientId (Failed $ show rr)
+            Nothing -> do
+              case gc of
+                RemoveNode i x0 -> undefined
+                InsertNode no@Node {..} -> do
+                  case runCalc nodeScript of
+                    Left s -> awtc result clientId (Failed s)
+                    Right ex -> do
+                      putMVar a (G.InsertNode nodeName ex nodeId nodeInputNodes)
+                      res <- takeMVar b
+                      awtc result clientId (Success $ show res)
+      managerFrontThread manager command result
     NodeCommand n i nc -> do
       let mref = manager ^. graphs
       mmap <- readIORef mref

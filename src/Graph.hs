@@ -160,6 +160,7 @@ data EvalCommand
   | Terminal
   | LookupVar Int Name
   | EvalExpr Int Expr
+  | InsertNode String Expr Int [(Int, Int)]
   deriving (Show)
 
 data TraceRunGraph
@@ -233,6 +234,17 @@ runGraph' mvar rmvar tracer =
                 -- update global state
                 handlersState %= Map.insert nodeId newhs
                 sendIO $ putMVar rmvar (Successed "expr eval successed")
+        evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+      InsertNode a b c d -> do
+        gs <- S.get @GlobalState
+        catchError @GraphError
+          (insertNameNodeEdgeExpr a b c d)
+          ( \ee -> do
+              sendIO $ putMVar rmvar (Failed $ " insert node error: " ++ show ee)
+              S.put gs
+              evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+          )
+        sendIO $ putMVar rmvar (Successed " insert node successed ")
         evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
 
 data TraceGraphEval = GR
