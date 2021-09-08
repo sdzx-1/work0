@@ -7,7 +7,6 @@
 
 module Graph where
 
-import B
 import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.Lift
@@ -159,6 +158,8 @@ insertNameNodeEdgeExpr name code nodeid edges = do
 data EvalCommand
   = RunOnce
   | Terminal
+  | LookupVar Int Name
+  | EvalExpr Int Expr
   deriving (Show)
 
 data TraceRunGraph
@@ -181,6 +182,7 @@ runGraph chan tracer =
         print s
         print "--------------------------------------------------------"
     RunOnce -> evalGraph (contramap TraceResult tracer) >> runGraph chan tracer
+    _ -> undefined
 
 runGraph' ::
   Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m =>
@@ -191,7 +193,7 @@ runGraph' ::
 runGraph' mvar rmvar tracer =
   sendIO (tryTakeMVar mvar) >>= \case
     Nothing -> do
-      sendIO $ threadDelay (10 ^ 6)
+      sendIO $ threadDelay (10 ^ 5)
       evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
     Just x -> case x of
       Terminal -> do
@@ -202,6 +204,36 @@ runGraph' mvar rmvar tracer =
           print "--------------------------------------------------------"
           putMVar rmvar (Successed "terminal successed")
       RunOnce -> evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+      LookupVar nodeId name -> do
+        hs <- use handlersState
+        let res = join $ do
+              v <- Map.lookup nodeId hs
+              PAddr t1 <- Map.lookup name (v ^. handlerEnv)
+              IntMap.lookup t1 (v ^. handlerStore)
+        case res of
+          Nothing -> sendIO $ putMVar rmvar (Failed $ show (nodeId, name) ++ " var not found ")
+          Just v -> sendIO $ putMVar rmvar (Successed $ show v)
+        evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+      EvalExpr nodeId e -> do
+        hs' <- use handlersState
+        case Map.lookup nodeId hs' of
+          Nothing -> sendIO $ putMVar rmvar (Failed $ show nodeId ++ " node not exist ")
+          Just hs -> do
+            res <-
+              sendIO $
+                Eval.runEval'
+                  (hs ^. handlerEnv)
+                  (hs ^. handlerStore)
+                  e
+            case res of
+              Left ee -> sendIO $ putMVar rmvar (Failed $ show nodeId ++ " " ++ show ee)
+              Right (a, b, _) -> do
+                -- update HandlerState
+                let newhs = hs {_handlerEnv = b, _handlerStore = a}
+                -- update global state
+                handlersState %= Map.insert nodeId newhs
+                sendIO $ putMVar rmvar (Successed "expr eval successed")
+        evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
 
 data TraceGraphEval = GR
   { nodeId :: Int,

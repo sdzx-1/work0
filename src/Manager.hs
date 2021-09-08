@@ -26,7 +26,9 @@ import Control.Monad.STM
 import Control.Tracer
 import Data.IORef
 import Data.Map as Map
+import Data.Text (pack)
 import qualified Graph as G
+import Name
 import Optics
 
 --- main thread
@@ -38,7 +40,7 @@ import Optics
 ---   manager backend thread  -- catch error or finish
 
 --- graph thread
-newtype RunResult = RunResult String
+newtype RunResult = RunResult String deriving (Show)
 
 newtype Manager = Manager
   {_graphs :: IORef (Map GraphId (MVar G.EvalCommand, MVar G.EvalResult, MVar RunResult))}
@@ -60,12 +62,10 @@ managerFrontThread manager command result = do
       -- expr parser
       let ls = forM (graphNodes gr) $ \(Node a b _ c d) -> do
             case runCalc d of
-              Left s -> Left $ "nodeName: " ++ a ++ " nodeId: " ++ show b++ " "++ s
+              Left s -> Left $ "nodeName: " ++ a ++ " nodeId: " ++ show b ++ " " ++ s
               Right ex -> Right (a, ex, b, c)
       case ls of
-        Left s ->
-          awtc result clientId (Failed s)
-            >> managerFrontThread manager command result
+        Left s -> awtc result clientId (Failed s)
         Right x0 -> do
           -- init node
           res <-
@@ -74,9 +74,7 @@ managerFrontThread manager command result = do
                 do
                   forM_ x0 $ \(a, b, c, d) -> G.insertNameNodeEdgeExpr a b c d
           case res of
-            Left ge ->
-              awtc result clientId (Failed (show ge))
-                >> managerFrontThread manager command result
+            Left ge -> awtc result clientId (Failed (show ge))
             Right (x1, ()) -> do
               evalCommand <- newEmptyMVar
               evalResult <- newEmptyMVar
@@ -91,20 +89,43 @@ managerFrontThread manager command result = do
               let size = Map.size mmap
               modifyIORef mref (Map.insert (size + 1) (evalCommand, evalResult, runResult))
               awtc result clientId (Success $ "graph thread forked, graphId is  " ++ show (size + 1))
-              managerFrontThread manager command result
+      managerFrontThread manager command result
     RemoveGraph n -> do
       let mref = manager ^. graphs
       mmap <- readIORef mref
       case Map.lookup n mmap of
-        Nothing ->
-          awtc result clientId (Failed $ "graph " ++ show n ++ " not exist")
+        Nothing -> awtc result clientId (Failed $ "graph " ++ show n ++ " not exist")
         Just (a, b, _) -> do
           putMVar a G.Terminal
           res <- takeMVar b
           modifyIORef mref (Map.delete n)
           awtc result clientId (Success (show res))
+      managerFrontThread manager command result
     GraphCommand n gc -> undefined
-    NodeCommand n i nc -> undefined
+    NodeCommand n i nc -> do
+      let mref = manager ^. graphs
+      mmap <- readIORef mref
+      case Map.lookup n mmap of
+        Nothing -> awtc result clientId (Failed $ "graph " ++ show n ++ " not exist")
+        Just (a, b, c) -> do
+          runState <- tryTakeMVar c
+          case runState of
+            -- graph thread terminate , maybe error happened
+            Just rr -> awtc result clientId (Failed $ show rr)
+            Nothing -> do
+              case nc of
+                LookUpVar s -> do
+                  putMVar a (G.LookupVar i (name $ pack s))
+                  res <- takeMVar b
+                  awtc result clientId (Success $ " lookup var success: " ++ show res)
+                EvalExpr s -> do
+                  case runCalc s of
+                    Left str -> awtc result clientId (Failed $ "expr parse error: " ++ str)
+                    Right ex -> do
+                      putMVar a (G.EvalExpr i ex)
+                      res <- takeMVar b
+                      awtc result clientId (Success $ "success: " ++ show res)
+      managerFrontThread manager command result
 
 awtc :: TChan (Client Result) -> Id -> Result -> IO ()
 awtc tc i res = atomically (writeTChan tc (Client i res))

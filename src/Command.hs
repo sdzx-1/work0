@@ -9,8 +9,8 @@
 module Command where
 
 import Data.Aeson
-import GHC.Generics
 import Data.ByteString.Lazy as BSL
+import GHC.Generics
 
 type GraphId = Int
 
@@ -33,25 +33,6 @@ data Graph = Graph
     graphNodes :: [Node]
   }
   deriving (Generic, FromJSON, ToJSON)
-
--- >>> BSL.writeFile "test.json" (encode defCommand)
-defCommand =
-  CreateGraph
-    ( Graph
-        { graphName = "test"
-        , graphDescription = Just "something"
-        , graphNodes = [
-          Node {
-            nodeName = "Source",
-            nodeId = 0 ,
-            nodeDescription = Nothing ,
-            nodeInputNodes = [],
-            nodeScript = "function handler(){ logger(1); return(1) }"
-
-          }
-        ]
-        }
-    )
 
 data Command
   = CreateGraph
@@ -90,3 +71,38 @@ data Result
 type Id = Int
 
 data Client a = Client Id a
+
+-- >>> BSL.writeFile "careteGraph.json" (encode defCreateGraph)
+defCreateGraph =
+  CreateGraph
+    ( Graph
+        { graphName = "test",
+          graphDescription = Just "something",
+          graphNodes =
+            [ Node
+                { nodeName = "Source",
+                  nodeId = 0,
+                  nodeDescription = Nothing,
+                  nodeInputNodes = [],
+                  nodeScript = "var a = 0; function handler(){ a = a + 1; logger(a); return(1) }"
+                }
+            ]
+        }
+    )
+
+defRemoveGraph = RemoveGraph 1
+
+-- >>> BSL.writeFile "nodeEval.json" (encode defNodeCommand1)
+defNodeCommand =
+  NodeCommand
+    { graphId = 1,
+      nodeId = 0,
+      nodeCommand = LookUpVar "a"
+    }
+
+defNodeCommand1 =
+  NodeCommand
+    { graphId = 1,
+      nodeId = 0,
+      nodeCommand = EvalExpr "a = 10"
+    }
