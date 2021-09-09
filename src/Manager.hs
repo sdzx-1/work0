@@ -133,6 +133,10 @@ managerFrontThread manager command result = do
             Just rr -> awtc result clientId (Failed $ show rr)
             Nothing -> do
               case gc of
+                LookupAllNodes -> do
+                  putMVar a G.LookupAllNodes
+                  res <- takeMVar b
+                  awtc result clientId (Success $ show res)
                 LookupGraph -> do
                   putMVar a G.LookupGlobalState
                   res <- takeMVar b

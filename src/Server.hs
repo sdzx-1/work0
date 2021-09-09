@@ -24,6 +24,7 @@ server1 comChan resultTChan =
   handler1
     :<|> handler11
     :<|> handler12
+    :<|> handler13
     :<|> handler2
     :<|> handler3
     :<|> handler4
@@ -43,6 +44,7 @@ server1 comChan resultTChan =
     handler1 g = fun (CreateGraph g)
     handler11 = fun LookupAllGraph
     handler12 i = fun (GraphCommand i LookupGraph)
+    handler13 i = fun (GraphCommand i LookupAllNodes)
     handler2 i = fun (RemoveGraph i)
     handler3 i n = fun (GraphCommand i (InsertNode n))
     handler4 i n s = fun (NodeCommand i n (LookUpVar s))

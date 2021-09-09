@@ -180,6 +180,7 @@ data EvalCommand
   | EvalExpr Int Expr
   | InsertNode String Expr Int [(Int, Int)]
   | LookupGlobalState
+  | LookupAllNodes
   deriving (Show)
 
 data TraceRunGraph
@@ -268,6 +269,10 @@ runGraph' mvar rmvar tracer =
       LookupGlobalState -> do
         gs <- S.get @GlobalState
         sendIO $ putMVar rmvar (Successed $ show gs)
+        evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+      LookupAllNodes -> do
+        gs <- S.get @GlobalState
+        sendIO $ putMVar rmvar (Successed $ show $ gs ^. graph)
         evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
 
 data TraceGraphEval = GR

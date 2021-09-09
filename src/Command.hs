@@ -63,6 +63,7 @@ data GraphCommand
         dependNodeSource :: [(NodeId, Int)]
       }
   | LookupGraph
+  | LookupAllNodes
   deriving (Generic, FromJSON, ToJSON)
 
 data NodeCommand
