@@ -8,7 +8,7 @@ import Data.Word(Word8)
 }
 
 
-%wrapper "posn"
+%wrapper "monad"
 
 $digit = 0-9			-- digits
 $sign = [\+ \-]
@@ -24,12 +24,12 @@ tokens :-
 
   $white+				;
   "--".*				;
-  @keywords                         { \(AlexPn _ l c) s -> KeyWord    (Posn l c) s }
-  $alpha [$alpha $digit \_ \']*		{   \(AlexPn _ l c) s -> Var        (Posn l c) s }
-  @separators                       { \(AlexPn _ l c) s -> Separators (Posn l c) s}
-  $sign? $digit+                    { \(AlexPn _ l c) s -> Number     (Posn l c) $ read s}
-  $sign? $digit+ \. $digit+         { \(AlexPn _ l c) s -> Number     (Posn l c) $ read s }
-  \"($alpha)*\"                     { \(AlexPn _ l c) s -> String     (Posn l c) $ init $ tail s}
+  @keywords                         { \(AlexPn _ l c, _, _, s) len -> return $ KeyWord    (Posn l c) $ take len s }
+  $alpha [$alpha $digit \_ \']*		  { \(AlexPn _ l c, _, _, s) len -> return $ Var        (Posn l c) $ take len s }
+  @separators                       { \(AlexPn _ l c, _, _, s) len -> return $ Separators (Posn l c) $ take len s}
+  $sign? $digit+                    { \(AlexPn _ l c, _, _, s) len -> return $ Number     (Posn l c) $ read $ take len s}
+  $sign? $digit+ \. $digit+         { \(AlexPn _ l c, _, _, s) len -> return $ Number     (Posn l c) $ read $ take len s }
+  \"($alpha)*\"                     { \(AlexPn _ l c, _, _, s) len -> return $ String     (Posn l c) $ init $ tail $ take len s}
 
 
 
@@ -49,10 +49,22 @@ data Token
   | Separators Posn String
   | KeyWord Posn String
   | Var Posn String
+  | EOF
   deriving (Eq,Show)
+
+alexEOF = return EOF
+
+scanner str = reverse <$> (runAlex str $ do 
+  let loop res = 
+       do 
+        tok <- alexMonadScan;
+        case tok of 
+           EOF -> return res 
+           _ -> loop $! (tok : res)
+  loop [])
 
 main = do
   s <- return "var a = 1;"
-  print (alexScanTokens s)
+  print (scanner s)
 
 }

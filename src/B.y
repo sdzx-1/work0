@@ -92,7 +92,11 @@ failE err = Failed err
 
 
 runCalc :: String -> Either String Expr
-runCalc s = case  calc (alexScanTokens s) of 
+runCalc s = 
+   case scanner s of 
+      Left err -> Left err
+      Right rs -> 
+         case  calc rs of 
              Ok a -> Right a 
              Failed s -> Left s
 
