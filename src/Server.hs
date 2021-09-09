@@ -60,7 +60,7 @@ server comChan resultTChan clientid comd =
         else retry
 
 app :: Chan (Client Command) -> TChan (Client Result) -> Application
-app c r = serve api (server c r)
+app c r = serve api1 (server1 c r)
 
 main :: IO ()
 main = do

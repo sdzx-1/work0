@@ -1,1 +1,0 @@
-{"createGraph":{"graphName":"test","graphDescription":"something","graphNodes":[{"nodeScript":"var a = 0; function handler(){ a = a + 1; logger(a); return(a) }","nodeId":0,"nodeName":"Source","nodeDescription":null,"nodeInputNodes":[]}]},"tag":"CreateGraph"}

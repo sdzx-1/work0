@@ -5,6 +5,7 @@
 module Node where
 
 import B
+import qualified Command as C
 import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.Lift
@@ -20,6 +21,8 @@ import Graph
 import System.Environment
 import Text.Read
 import Widget
+import qualified Data.ByteString.Lazy as BSL
+import Data.Aeson
 
 data Node = Node String Int [(Int, Int)] deriving (Read, Show)
 
@@ -35,11 +38,15 @@ start = do
 
   ls <- forM ns $ \(Node s a b) -> do
     ne' <- runCalc <$> readFile (workDir ++ "/" ++ s ++ ".txt")
+    tcon <- readFile (workDir ++ "/" ++ s ++ ".txt")
     ne <- case ne' of
       Left e -> error $ show $ "module is " ++ s ++ " " ++ show e
       Right v -> return v
-    return (s, ne, a, b)
-  print ls
+    let cnode = C.Node s a Nothing b tcon
+    return ((s, ne, a, b), cnode)
+  -- print ls
+  let cGraph = C.Graph "example" Nothing (map snd ls)
+  BSL.writeFile (workDir ++ "/" ++ "graph" ++ ".json") (encode cGraph)
   (r, f, m, pe, ge) <- initGUI
 
   -- fork graph worker
@@ -48,7 +55,7 @@ start = do
       runError @GraphError $
         runState @GlobalState initGlobalState $ do
           -- init
-          forM_ ls $ \(a, b, c, d) -> insertNameNodeEdgeExpr a b c d
+          forM_ ls $ \((a, b, c, d), _) -> insertNameNodeEdgeExpr a b c d
           g <- use graph
           sendIO $ forkIO $ void $ tmain g
           let tracer :: Has (State GlobalState :+: Lift IO) sig m => TraceRunGraph -> m ()

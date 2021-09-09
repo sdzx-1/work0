@@ -1,0 +1,53 @@
+{
+    "graphName": "example",
+    "graphDescription": null,
+    "graphNodes": [
+        {
+            "nodeScript": "\n\nfunction add(a1,b1) {\n  return(a1 + b1)\n};\n\nfunction fib(a,b,max){\n    logger(a);\n    if (max < b)\n     { \n       return(a)\n     }\n    else \n    {\n     var c = a + b;\n     a = b;\n     b = c;\n     fib(a,b,max);\n     }\n\n};\n\n\nfunction handler(){\n  var a = random(5,15);\n  if (a < 10) {\n    return(fib(1,1,a));\n  } else {\n    return(100);\n  }\n};\n\n",
+            "nodeId": 0,
+            "nodeName": "s0",
+            "nodeDescription": null,
+            "nodeInputNodes": []
+        },
+        {
+            "nodeScript": "\n\nvar count = 0;\n\nvar add = function (a1,b1) {\n  return(a1 + b1)\n};\n\n\nfunction handler(a){\n    count = count + 1;\n    logger(count);\n    return(add(100000,a))\n}\n\n\n\n",
+            "nodeId": 1,
+            "nodeName": "s1",
+            "nodeDescription": null,
+            "nodeInputNodes": [
+                [
+                    0,
+                    1
+                ]
+            ]
+        },
+        {
+            "nodeScript": "\nfunction handler(a){\n  for(var i = 0; i < 5; i = i + 1 ){\n  logger(random(1,10))\n  };\n    return(1000 + a)\n}\n\n",
+            "nodeId": 2,
+            "nodeName": "s2",
+            "nodeDescription": null,
+            "nodeInputNodes": [
+                [
+                    0,
+                    1
+                ]
+            ]
+        },
+        {
+            "nodeScript": "\n\nvar handler = function(a,b){\n    logger(a + b);\n    logger(random(a,b));\n    return(a + b)\n}\n\n",
+            "nodeId": 3,
+            "nodeName": "s3",
+            "nodeDescription": null,
+            "nodeInputNodes": [
+                [
+                    1,
+                    1
+                ],
+                [
+                    2,
+                    2
+                ]
+            ]
+        }
+    ]
+}
