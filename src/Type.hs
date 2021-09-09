@@ -38,6 +38,8 @@ data Expr
   | Assignment Name Expr  -- "a = 1"
   | BuildInFunction ([Expr] -> IO (Either EvalError Expr))
   | Skip  -- if any args is Skip, then skip next cal , write result to Skip
+  -- e: a.b.c.d.e
+  | ObjectGet Name [Name]
 {- ORMOLU_ENABLE -}
 
 isSkip :: Expr -> Bool
@@ -64,6 +66,8 @@ data EvalError
   | UnSpportAppFun String
   | UnallocatedAddr
   | UninitializedAddr
+  | NotObject Name 
+  | ObjectNotF Name
   deriving (Show)
 
 instance Show Expr where
@@ -78,6 +82,7 @@ instance Show Expr where
   show (Assignment name e) = " " ++ show name ++ " = " ++ show e
   show (IfElse a b c) = "if: " ++ show a ++ show b ++ show c
   show Skip = "skip: "
+  show (ObjectGet name ls) = "ObjectGet: " ++ show name ++ "  " ++ show ls
 
 -- >>> snd <$> runEval t
 -- Right  lit: LitNum 55.0

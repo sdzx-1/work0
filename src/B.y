@@ -68,6 +68,7 @@ Expr :: { Expr }
   | 'function' '(' sep(Name, ',') ')' '{' Expr0 '}'         { Fun $3 $6 }
   | 'if' '(' Expr ')' '{' Expr0 '}' 'else' '{' Expr0 '}'    { IfElse $3 $6 $10}
   | 'function' Name '(' sep(Name, ',') ')' '{' Expr0 '}'    { Type.Var $2 (Fun $4 $7)  }
+  | Name '.' sep(Name, '.')                                 { ObjectGet $1 $3 }
 
 Name :: { Name }
   : var { name $ T.pack $1 }

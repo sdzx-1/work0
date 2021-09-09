@@ -92,6 +92,20 @@ evalExpr = \case
     return e'
   BuildInFunction f -> return (BuildInFunction f)
   Skip -> return Skip
+  ObjectGet name ls -> do
+    evalExpr (Elit $ LitSymbol name) >>= \case
+      p@(Elit (LitObject pairs)) -> case getFold ls p of
+        Left ee -> throwError ee
+        Right ex -> return ex
+      _ -> throwError (NotObject name)
+
+getFold :: [Name] -> Expr -> Either EvalError Expr
+getFold [] e = Right e
+getFold (a : ls) (Elit (LitObject pairs)) =
+  case Prelude.lookup a pairs of
+    Nothing -> Left (ObjectNotF a)
+    Just ex -> getFold ls ex
+getFold (a : _) _ = Left (NotObject a)
 
 runEval :: Expr -> IO (Either EvalError (Map Name PAddr, (PStore Expr, Expr)))
 runEval expr =
