@@ -69,6 +69,7 @@ data GraphCommand
 data NodeCommand
   = LookUpVar String
   | EvalExpr String
+  | LookupNode
   deriving (Generic, FromJSON, ToJSON)
 
 data Result

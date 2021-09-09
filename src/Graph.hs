@@ -181,6 +181,7 @@ data EvalCommand
   | InsertNode String Expr Int [(Int, Int)]
   | LookupGlobalState
   | LookupAllNodes
+  | LookupNode Int
   deriving (Show)
 
 data TraceRunGraph
@@ -273,6 +274,12 @@ runGraph' mvar rmvar tracer =
       LookupAllNodes -> do
         gs <- S.get @GlobalState
         sendIO $ putMVar rmvar (Successed $ show $ gs ^. graph)
+        evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
+      LookupNode i -> do
+        gs <- S.get @GlobalState
+        case Map.lookup i (gs ^. handlersState) of 
+          Nothing -> sendIO $ putMVar rmvar (Failed "node not exist")
+          Just hs -> sendIO $ putMVar rmvar (Successed $ show hs)
         evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
 
 data TraceGraphEval = GR

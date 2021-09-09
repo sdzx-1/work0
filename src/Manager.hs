@@ -162,6 +162,10 @@ managerFrontThread manager command result = do
             Just rr -> awtc result clientId (Failed $ show rr)
             Nothing -> do
               case nc of
+                LookupNode -> do
+                  putMVar a (G.LookupNode i)
+                  res <- takeMVar b
+                  awtc result clientId (Success $ " lookup node success: " ++ show res)
                 LookUpVar s -> do
                   putMVar a (G.LookupVar i (name $ pack s))
                   res <- takeMVar b
