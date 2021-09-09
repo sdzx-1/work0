@@ -20,6 +20,8 @@ $alpha = [a-zA-Z]		-- alphabetic characters
 
 @keywords = var|return|function|for|if|else
 
+@string = [$alpha $digit $sign \: \" \']
+
 tokens :-
 
   $white+				;
@@ -29,7 +31,7 @@ tokens :-
   @separators                       { \(AlexPn _ l c, _, _, s) len -> return $ Separators (Posn l c) $ take len s}
   $sign? $digit+                    { \(AlexPn _ l c, _, _, s) len -> return $ Number     (Posn l c) $ read $ take len s}
   $sign? $digit+ \. $digit+         { \(AlexPn _ l c, _, _, s) len -> return $ Number     (Posn l c) $ read $ take len s }
-  \"($alpha)*\"                     { \(AlexPn _ l c, _, _, s) len -> return $ String     (Posn l c) $ init $ tail $ take len s}
+  \"(@string)*\"                     { \(AlexPn _ l c, _, _, s) len -> return $ String     (Posn l c) $ init $ tail $ take len s}
 
 
 
