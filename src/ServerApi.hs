@@ -16,6 +16,7 @@ type ServerApi = "command" :> "clientid" :> Capture "clientid" Int :> ReqBody '[
 type Api =
   "api" :> "graphs" :> ReqBody '[JSON] Graph :> Post '[JSON] Result
     :<|> "api" :> "graphs" :> Get '[JSON] Result
+    :<|> "api" :> "graphs" :> Capture "graph id" Int :> Get '[JSON] Result
     :<|> "api" :> "graphs" :> Capture "graph id" Int :> Delete '[JSON] Result
     :<|> "api" :> "graphs" :> Capture "graph id" Int :> ReqBody '[JSON] Node :> Post '[JSON] Result
     :<|> "api" :> "graphs" :> Capture "graph id" Int :> "nodes" :> Capture "node id" Int :> "getvar" :> Capture "var name" String :> Get '[JSON] Result

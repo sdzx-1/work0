@@ -133,6 +133,10 @@ managerFrontThread manager command result = do
             Just rr -> awtc result clientId (Failed $ show rr)
             Nothing -> do
               case gc of
+                LookupGraph -> do
+                  putMVar a G.LookupGlobalState
+                  res <- takeMVar b
+                  awtc result clientId (Success $ show res)
                 RemoveNode i x0 -> undefined
                 InsertNode no@Node {..} -> do
                   case runCalc nodeScript of
