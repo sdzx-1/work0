@@ -27,6 +27,8 @@ import Name
   '}'  { Separators _ "}" }
   ','  { Separators _ "," }
   '='  { Separators _ "=" }
+  '.'  { Separators _ "." }
+  ':'  { Separators _ ":" }
 
   num    { Number _ $$ }
   string { String _ $$ }
@@ -70,11 +72,14 @@ Expr :: { Expr }
 Name :: { Name }
   : var { name $ T.pack $1 }
 
+ObjPair :: {(Name, Expr)}
+  : Name ':' Expr { ($1, $3) }
+
 Lit :: { Lit }
   : string { LitStr $1 }
   | num { LitNum $1 }
   | var { LitSymbol (name $ T.pack $1)  }
-
+  | '{' sep(ObjPair,',') '}' {LitObject $2}
 {
 
 data E a = Ok a | Failed String

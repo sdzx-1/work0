@@ -11,7 +11,7 @@ data Lit
   | LitNull
   | LitUndef
   | LitSymbol Name
-  | LitObject [(String, Expr)]
+  | LitObject [(Name, Expr)]
   | LitArray [Expr]
   deriving (Show)
 

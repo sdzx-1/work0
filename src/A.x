@@ -16,7 +16,7 @@ $sign = [\+ \-]
 
 $alpha = [a-zA-Z]		-- alphabetic characters
 
-@separators = \; | \+ | \( | \) | \< | \{ | \} | \, | \=
+@separators = \; | \+ | \( | \) | \< | \{ | \} | \, | \= | \.| \:
 
 @keywords = var|return|function|for|if|else
 
