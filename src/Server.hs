@@ -65,9 +65,10 @@ app c r = serve api1 (server1 c r)
 main :: IO ()
 main = do
   gref <- newIORef Map.empty
+  counref <- newIORef 0
   comChan <- newChan
   resTChan <- newTChanIO
-  forkIO $ managerFrontThread (Manager gref) comChan resTChan
+  forkIO $ managerFrontThread (Manager gref counref) comChan resTChan
   print "servre start, http port 8081"
   -- writeChan comChan (Client 0 defCommand)
   run 8081 (app comChan resTChan)

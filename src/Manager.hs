@@ -43,8 +43,10 @@ import Optics
 --- graph thread
 newtype RunResult = RunResult String deriving (Show)
 
-newtype Manager = Manager
-  {_graphs :: IORef (Map GraphId (MVar G.EvalCommand, MVar G.EvalResult, MVar RunResult))}
+data Manager = Manager
+  { _graphs :: IORef (Map GraphId (MVar G.EvalCommand, MVar G.EvalResult, MVar RunResult)),
+    _counter :: IORef Int
+  }
 
 makeLenses ''Manager
 
@@ -85,11 +87,17 @@ managerFrontThread manager command result = do
                       runState @G.GlobalState x1 (G.runGraph' evalCommand evalResult nullTracer)
               -- fork graph thread
               void $ forkIO $ graphThread runResult fun
+
               let mref = manager ^. graphs
-              mmap <- readIORef mref
-              let size = Map.size mmap
-              modifyIORef mref (Map.insert (size + 1) (evalCommand, evalResult, runResult))
-              awtc result clientId (Success $ "graph thread forked, graphId is  " ++ show (size + 1))
+              -- mmap <- readIORef mref
+
+              -- let size = Map.size mmap
+              modifyIORef (manager ^. counter) (+ 1)
+
+              size <- readIORef (manager ^. counter)
+
+              modifyIORef mref (Map.insert size (evalCommand, evalResult, runResult))
+              awtc result clientId (Success $ "graph thread forked, graphId is  " ++ show size)
       managerFrontThread manager command result
     RemoveGraph n -> do
       let mref = manager ^. graphs
