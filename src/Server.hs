@@ -22,6 +22,7 @@ api1 = Proxy
 server1 :: Chan (Client Command) -> TChan (Client Result) -> Server Api
 server1 comChan resultTChan =
   handler1
+    :<|> handler11
     :<|> handler2
     :<|> handler3
     :<|> handler4
@@ -39,6 +40,7 @@ server1 comChan resultTChan =
             else retry
 
     handler1 g = fun (CreateGraph g)
+    handler11 = fun LookupAllGraph
     handler2 i = fun (RemoveGraph i)
     handler3 i n = fun (GraphCommand i (InsertNode n))
     handler4 i n s = fun (NodeCommand i n (LookUpVar s))

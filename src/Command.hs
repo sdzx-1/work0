@@ -40,7 +40,8 @@ data Graph = Graph
   deriving (Generic, FromJSON, ToJSON)
 
 data Command
-  = CreateGraph
+  = LookupAllGraph
+  | CreateGraph
       {createGraph :: Graph}
   | RemoveGraph
       {removeGarphId :: GraphId}

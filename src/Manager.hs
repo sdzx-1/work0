@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
@@ -58,6 +59,16 @@ managerFrontThread ::
 managerFrontThread manager command result = do
   Client clientId commd <- readChan command
   case commd of
+    LookupAllGraph -> do
+      g <- readIORef (manager ^. graphs)
+      ls <- forM (Map.toList g) $ \(k, (_, _, res)) -> do
+        tryReadMVar res
+          >>= ( \case
+                  Nothing -> return (k, "graph is running")
+                  Just rr -> return (k, "graph not run " ++ show rr)
+              )
+      awtc result clientId (Success $ show ls)
+      managerFrontThread manager command result
     CreateGraph gr -> do
       -- gid <- fresh
       -- TODO: 1.check graph 2.check arg match
