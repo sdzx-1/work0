@@ -93,11 +93,20 @@ evalExpr = \case
   BuildInFunction f -> return (BuildInFunction f)
   Skip -> return Skip
   ObjectGet name ls -> do
-    evalExpr (Elit $ LitSymbol name) >>= \case
-      p@(Elit (LitObject pairs)) -> case getFold ls p of
-        Left ee -> throwError ee
-        Right ex -> return ex
-      _ -> throwError (NotObject name)
+    r1 <- case name of
+      Name "this" -> evalExpr (Elit $ LitSymbol name)
+      _ -> do
+        a <- lookupEnv (Name "this")
+        maybe (throwError $ VarNotDefined (show name)) (.= (Elit $ LitSymbol name)) a
+        return (Elit $ LitSymbol name)
+    case r1 of
+      Elit (LitSymbol name') -> do
+        evalExpr (Elit $ LitSymbol name') >>= \case
+          p@(Elit (LitObject pairs)) -> case getFold ls p of
+            Left ee -> throwError ee
+            Right ex -> return ex
+          _ -> throwError (NotObject name')
+      _ -> throwError ThisPointStrangeError
 
 getFold :: [Name] -> Expr -> Either EvalError Expr
 getFold [] e = Right e
@@ -143,7 +152,8 @@ init' e =
       Var "<" $ BuildInFunction less,
       Var "logger" $ BuildInFunction logger,
       Var "random" $ BuildInFunction random',
-      Var "skip" $ BuildInFunction skip'
+      Var "skip" $ BuildInFunction skip',
+      Var "this" $ Elit LitNull
     ]
       ++ [e]
 

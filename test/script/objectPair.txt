@@ -7,7 +7,9 @@ var person = {
         x:10,
         y:30
     },
-    fun1:function(a,b){random(a,b)}
+    fun1:function(a,b){random(a,b)},
+    fun2:function(){ this.position.x + this.position.y }
 };
 var res = person.position.x + person.position.y;
-person.fun1(person.position.x, person.position.y)
+person.fun1(person.position.x, person.position.y);
+person.fun2();

@@ -68,6 +68,7 @@ data EvalError
   | UninitializedAddr
   | NotObject Name 
   | ObjectNotF Name
+  | ThisPointStrangeError
   deriving (Show)
 
 instance Show Expr where
