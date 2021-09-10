@@ -13,3 +13,7 @@ var person = {
 var res = person.position.x + person.position.y;
 person.fun1(person.position.x, person.position.y);
 person.fun2();
+person.firstName = "yang";
+person.firstName;
+person.a.b.c.d.e.f.g="hello";
+person.a.b.c.d.e.f.g

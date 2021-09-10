@@ -33,10 +33,10 @@ evaLit = \case
     -- sendIO $ print (n, a)
     maybe (pure $ Elit $ LitSymbol n) fetch a
   LitObject ls -> do
-    ls' <- forM ls $ \(name, e) -> do
+    ls' <- forM (Map.toList ls) $ \(name, e) -> do
       e' <- evalExpr e
       return (name, e')
-    pure $ Elit $ LitObject ls'
+    pure $ Elit $ LitObject $ Map.fromList ls'
   LitArray arr -> Elit . LitArray <$> mapM evalExpr arr
   other -> pure $ Elit other
 
@@ -107,11 +107,47 @@ evalExpr = \case
             Right ex -> return ex
           _ -> throwError (NotObject name')
       _ -> throwError ThisPointStrangeError
+  ObjectSet name ls e -> do
+    r1 <- case name of
+      Name "this" -> evalExpr (Elit $ LitSymbol name)
+      _ -> do
+        a <- lookupEnv (Name "this")
+        maybe (throwError $ VarNotDefined (show name)) (.= (Elit $ LitSymbol name)) a
+        return (Elit $ LitSymbol name)
+    case r1 of
+      Elit (LitSymbol name') -> do
+        evalExpr (Elit $ LitSymbol name') >>= \case
+          p@(Elit (LitObject pairs)) -> do
+            sv <- evalExpr e
+            case setFold sv ls p of
+              Left ee -> throwError ee
+              Right ex -> do
+                a <- lookupEnv name'
+                maybe (throwError $ VarNotDefined (show name)) (.= ex) a
+                return ex
+          _ -> throwError (NotObject name')
+      _ -> throwError ThisPointStrangeError
+
+setFold :: Expr -> [Name] -> Expr -> Either EvalError Expr
+setFold sv [a] (Elit (LitObject pairs)) =
+  return (Elit $ LitObject $ Map.insert a sv pairs)
+setFold sv (a : ls) (Elit (LitObject pairs)) = do
+  newExpr <- case Map.lookup a pairs of
+    Nothing ->
+      let go [x] = return $ Elit (LitObject (Map.fromList [(x, sv)]))
+          go (x : xs) = do
+            xs' <- go xs
+            return $ Elit (LitObject (Map.fromList [(x, xs')]))
+          go _ = Left ObjectSetError
+       in go ls
+    Just ex -> setFold sv ls ex
+  return (Elit $ LitObject $ Map.insert a newExpr pairs)
+setFold _ _ _ = Left ObjectSetError
 
 getFold :: [Name] -> Expr -> Either EvalError Expr
 getFold [] e = Right e
 getFold (a : ls) (Elit (LitObject pairs)) =
-  case Prelude.lookup a pairs of
+  case Map.lookup a pairs of
     Nothing -> Left (ObjectNotF a)
     Just ex -> getFold ls ex
 getFold (a : _) _ = Left (ObjectNotF a)

@@ -2,6 +2,7 @@
 
 module Type where
 
+import Data.Map
 import Name
 
 data Lit
@@ -11,7 +12,7 @@ data Lit
   | LitNull
   | LitUndef
   | LitSymbol Name
-  | LitObject [(Name, Expr)]
+  | LitObject (Map Name Expr)
   | LitArray [Expr]
   deriving (Show)
 
@@ -40,6 +41,8 @@ data Expr
   | Skip  -- if any args is Skip, then skip next cal , write result to Skip
   -- e: a.b.c.d.e
   | ObjectGet Name [Name]
+  -- e: a.b.c = 1
+  | ObjectSet Name [Name] Expr
 {- ORMOLU_ENABLE -}
 
 isSkip :: Expr -> Bool
@@ -66,9 +69,10 @@ data EvalError
   | UnSpportAppFun String
   | UnallocatedAddr
   | UninitializedAddr
-  | NotObject Name 
+  | NotObject Name
   | ObjectNotF Name
   | ThisPointStrangeError
+  | ObjectSetError
   deriving (Show)
 
 instance Show Expr where
@@ -84,6 +88,7 @@ instance Show Expr where
   show (IfElse a b c) = "if: " ++ show a ++ show b ++ show c
   show Skip = "skip: "
   show (ObjectGet name ls) = "ObjectGet: " ++ show name ++ "  " ++ show ls
+  show (ObjectSet name ls e) = "ObjectSet: " ++ show name ++ " " ++ show ls ++ " " ++ show e
 
 -- >>> snd <$> runEval t
 -- Right  lit: LitNum 55.0

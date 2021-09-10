@@ -4,6 +4,7 @@ import A
 import Type
 import qualified Data.Text as T
 import Name
+import qualified Data.Map as M
 }
 
 %monad { E } { thenE } { returnE }
@@ -69,6 +70,7 @@ Expr :: { Expr }
   | 'if' '(' Expr ')' '{' Expr0 '}' 'else' '{' Expr0 '}'    { IfElse $3 $6 $10}
   | 'function' Name '(' sep(Name, ',') ')' '{' Expr0 '}'    { Type.Var $2 (Fun $4 $7)  }
   | Name '.' sep(Name, '.')                                 { ObjectGet $1 $3 }
+  | Name '.' sep(Name, '.') '=' Expr                        { ObjectSet $1 $3 $5 }
 
 Name :: { Name }
   : var { name $ T.pack $1 }
@@ -80,7 +82,7 @@ Lit :: { Lit }
   : string { LitStr $1 }
   | num { LitNum $1 }
   | var { LitSymbol (name $ T.pack $1)  }
-  | '{' sep(ObjPair,',') '}' {LitObject $2}
+  | '{' sep(ObjPair,',') '}' {LitObject $ M.fromList $2}
 {
 
 data E a = Ok a | Failed String
