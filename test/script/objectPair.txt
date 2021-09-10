@@ -6,6 +6,8 @@ var person = {
     position:{
         x:10,
         y:30
-    }
+    },
+    fun1:function(a,b){random(a,b)}
 };
 var res = person.position.x + person.position.y;
+person.fun1(person.position.x, person.position.y)
