@@ -6,6 +6,7 @@ import qualified A
 import qualified B
 import Test.Hspec
 import Type
+import Eval
 
 isRight :: Either a b -> Bool
 isRight (Right _) = True
@@ -22,4 +23,4 @@ main = do
         B.runCalc con
           `shouldSatisfy` isRight
 
--- print $ B.runCalc con
+

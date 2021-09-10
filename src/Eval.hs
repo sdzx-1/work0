@@ -105,14 +105,14 @@ getFold (a : ls) (Elit (LitObject pairs)) =
   case Prelude.lookup a pairs of
     Nothing -> Left (ObjectNotF a)
     Just ex -> getFold ls ex
-getFold (a : _) _ = Left (NotObject a)
+getFold (a : _) _ = Left (ObjectNotF a)
 
 runEval :: Expr -> IO (Either EvalError (Map Name PAddr, (PStore Expr, Expr)))
 runEval expr =
   runError @EvalError
     . runEnv
     . runStore
-    $ evalExpr expr
+    $ evalExpr (init' expr)
 
 add :: [Expr] -> IO (Either EvalError Expr)
 add [Elit (LitNum b1), Elit (LitNum b2)] = return $ Right $ Elit $ LitNum (b1 + b2)
@@ -170,3 +170,13 @@ runEval' env store expr = do
                   nim = IntMap.fromList t
               return $ Right (nim, b, c)
         )
+
+-- runEval :: Expr -> IO
+-- test
+test = do
+  con <- readFile "test/script/objectPair.txt"
+  case runCalc con of
+    Left s -> print s
+    Right e -> do
+      res <- runEval e
+      print res

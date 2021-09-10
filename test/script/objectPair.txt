@@ -2,5 +2,10 @@ var person = {
     firstName:"John",
     lastName:"Doe",
     age:50,
-    eyeColor:"blue"
+    eyeColor:"blue",
+    position:{
+        x:10,
+        y:30
+    }
 };
+var res = person.position.x + person.position.y;
