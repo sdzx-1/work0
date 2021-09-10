@@ -6,7 +6,7 @@
 
 module Eval where
 
-import B
+import ScriptA.B
 import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.State.Strict as S

@@ -1,5 +1,5 @@
 {
-module A where
+module ScriptA.A where
 import Control.Monad (forM_)
 
 import Data.Char (ord)

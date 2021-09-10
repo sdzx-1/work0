@@ -4,7 +4,7 @@
 
 module Node where
 
-import B
+import ScriptA.B
 import qualified Command as C
 import Control.Algebra
 import Control.Carrier.Error.Either

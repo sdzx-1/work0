@@ -2,11 +2,11 @@
 
 module Main (main) where
 
-import qualified A
-import qualified B
+import Eval
+import qualified ScriptA.A as A
+import qualified ScriptA.B as B
 import Test.Hspec
 import Type
-import Eval
 
 isRight :: Either a b -> Bool
 isRight (Right _) = True
@@ -22,5 +22,3 @@ main = do
       it "object" $ do
         B.runCalc con
           `shouldSatisfy` isRight
-
-

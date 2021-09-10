@@ -9,7 +9,7 @@
 
 module Manager where
 
-import B (runCalc)
+import ScriptA.B (runCalc)
 import Command
 import Control.Algebra ((:+:))
 import Control.Carrier.Error.Either

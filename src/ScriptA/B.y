@@ -1,6 +1,6 @@
 {
-module B where
-import A
+module ScriptA.B where
+import ScriptA.A as A
 import Type
 import qualified Data.Text as T
 import Name
