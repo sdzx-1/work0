@@ -35,7 +35,6 @@ import ScriptB.A
 
 data LayoutClass
   = IfLayout
-  | ElseLayout
   | NewLayout
   | NewLayoutUninterrrupt
   deriving (Show, Eq)
@@ -135,6 +134,7 @@ insertLayout EOF = do
   if v == [Layout NewLayout 1]
     then modify (LayoutEnd :)
     else throwError LayoutNotMatch
+-- insertLayout (KeyWord (Posn _ c) "else") = undefined
 insertLayout token = do
   let Posn line column = getTokenPos token
   b <- isNewLine line
@@ -144,21 +144,22 @@ insertLayout token = do
         >>= ( \case
                 Nothing -> throwError NeverHappened
                 Just lay -> case lay of
-                  Layout lc n -> undefined
+                  Layout lc n -> do
+                    undefined
                   CreateNewLayoutUninterrrupt n -> do
-                    if line > n
+                    if column > n
                       then do
                         pop
-                        push (Layout NewLayoutUninterrrupt line)
+                        push (Layout NewLayoutUninterrrupt column)
                         addToken LayoutStart
                         addToken token
                         isSpecial token
                       else throwError IndentError
                   CreateNewLayout n ->
-                    if line > n
+                    if column > n
                       then do
                         pop
-                        push (Layout NewLayout line)
+                        push (Layout NewLayout column)
                         addToken LayoutStart
                         addToken token
                         isSpecial token
@@ -171,10 +172,11 @@ isSpecial ::
   Token ->
   m ()
 isSpecial = \case
-  KeyWord (Posn l c) s -> case s of
+  KeyWord (Posn _ c) s -> case s of
     "def" -> push (CreateNewLayout c)
-    "if" -> push (CreateNewLayoutUninterrrupt c)
-    "else" -> push (CreateNewLayout c)
+    "while" -> push (CreateNewLayout c)
+    "if" -> push (Layout IfLayout c) >> push (CreateNewLayoutUninterrrupt c)
+    "else" -> push (CreateNewLayout c)  -- collapse to if
     _ -> return ()
   _ -> return ()
 
