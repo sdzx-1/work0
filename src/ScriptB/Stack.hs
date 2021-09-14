@@ -145,7 +145,10 @@ insertLayout token = do
                 Nothing -> throwError NeverHappened
                 Just lay -> case lay of
                   Layout lc n -> do
-                    undefined
+                    case compare column n of
+                      EQ -> addToken LayoutStep >> addToken token >> isSpecial token
+                      GT -> throwError IndentError
+                      LT -> undefined
                   CreateNewLayoutUninterrrupt n -> do
                     if column > n
                       then do
@@ -176,7 +179,7 @@ isSpecial = \case
     "def" -> push (CreateNewLayout c)
     "while" -> push (CreateNewLayout c)
     "if" -> push (Layout IfLayout c) >> push (CreateNewLayoutUninterrrupt c)
-    "else" -> push (CreateNewLayout c)  -- collapse to if
+    "else" -> push (CreateNewLayout c) -- collapse to if
     _ -> return ()
   _ -> return ()
 
