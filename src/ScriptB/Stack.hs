@@ -137,7 +137,6 @@ insertLayout EOF = do
   if v == [Layout NewLayout 1]
     then modify (LayoutEnd :)
     else throwError LayoutNotMatch
--- insertLayout (KeyWord (Posn _ c) "else") = undefined
 insertLayout token = do
   let Posn line column = getTokenPos token
   b <- isNewLine line
@@ -148,10 +147,13 @@ insertLayout token = do
                 Nothing -> throwError NeverHappened
                 Just lay -> case lay of
                   Layout lc n -> do
-                    case compare column n of
-                      EQ -> addToken LayoutStep >> addToken token >> isSpecial token
-                      GT -> throwError IndentError
-                      LT -> undefined
+                    case token of
+                      KeyWord po "else" -> collapsToIf column >> addToken token >> push (CreateNewLayout column)
+                      _ -> do
+                        case compare column n of
+                          EQ -> addToken LayoutStep >> addToken token >> isSpecial token
+                          GT -> throwError IndentError
+                          LT -> collapsToColumn column >> addToken LayoutStep >> addToken token >> isSpecial token
                   CreateNewLayoutUninterrrupt n -> do
                     if column > n
                       then do
@@ -183,20 +185,20 @@ collapsToColumn c = do
       Layout NewLayoutUninterrrupt _ -> throwError LayoutUninterrrupt
       Layout _ column ->
         if c == column
-          then undefined
+          then return ()
           else pop >> addToken LayoutEnd >> collapsToColumn c
       _ -> pop >> addToken LayoutEnd >> collapsToColumn c
 
-collapsToIf :: Has (State LayoutStack :+: State Output :+: Error LayoutError) sig m => m ()
-collapsToIf = do
+collapsToIf :: Has (State LayoutStack :+: State Output :+: Error LayoutError) sig m => Int -> m ()
+collapsToIf c = do
   v <- layoutStack <$> get
   res <- pop
   addToken LayoutEnd
   case res of
     Nothing -> throwError CollapsToIfError
     Just lay -> case lay of
-      Layout IfLayout _ -> return ()
-      _ -> collapsToIf
+      Layout IfLayout column -> if c == column then return () else throwError CollapsToIfError
+      _ -> collapsToIf c
 
 isSpecial ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
@@ -207,7 +209,6 @@ isSpecial = \case
     "def" -> push (CreateNewLayout c)
     "while" -> push (CreateNewLayout c)
     "if" -> push (Layout IfLayout c) >> push (CreateNewLayoutUninterrrupt c)
-    "else" -> collapsToIf >> push (CreateNewLayout c)
     _ -> return ()
   _ -> return ()
 
