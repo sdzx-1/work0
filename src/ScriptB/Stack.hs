@@ -15,6 +15,7 @@ import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.Reader
 import Control.Carrier.State.Strict
+import Control.Monad
 import Control.Monad.IO.Class (MonadIO)
 import Data.Kind
 import ScriptB.A
@@ -90,6 +91,7 @@ data LayoutError
   = LayoutNotMatch
   | NeverHappened
   | IndentError
+  | CollapsToIfError
   deriving (Show)
 
 getTokenPos :: Token -> Posn
@@ -170,6 +172,16 @@ insertLayout token = do
             )
     else addToken token
 
+collapsToIf :: Has (State LayoutStack :+: Error LayoutError) sig m => m ()
+collapsToIf = do
+  v <- layoutStack <$> get
+  res <- pop
+  case res of
+    Nothing -> throwError CollapsToIfError
+    Just lay -> case lay of
+      Layout IfLayout _ -> return ()
+      _ -> collapsToIf
+
 isSpecial ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
   Token ->
@@ -179,7 +191,7 @@ isSpecial = \case
     "def" -> push (CreateNewLayout c)
     "while" -> push (CreateNewLayout c)
     "if" -> push (Layout IfLayout c) >> push (CreateNewLayoutUninterrrupt c)
-    "else" -> push (CreateNewLayout c) -- collapse to if
+    "else" -> collapsToIf >> push (CreateNewLayout c)
     _ -> return ()
   _ -> return ()
 
