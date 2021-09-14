@@ -123,6 +123,9 @@ push l = do
   v <- layoutStack <$> get
   put (LayoutStack (l : v))
 
+addToken :: Has (State Output) sig m => Token -> m ()
+addToken token = modify (token :)
+
 insertLayout ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
   Token ->
@@ -142,18 +145,38 @@ insertLayout token = do
                 Nothing -> throwError NeverHappened
                 Just lay -> case lay of
                   Layout lc n -> undefined
-                  CreateNewLayoutUninterrrupt n -> undefined
+                  CreateNewLayoutUninterrrupt n -> do
+                    if line > n
+                      then do
+                        pop
+                        push (Layout NewLayoutUninterrrupt line)
+                        addToken LayoutStart
+                        addToken token
+                        isSpecial token
+                      else throwError IndentError
                   CreateNewLayout n ->
                     if line > n
                       then do
                         pop
                         push (Layout NewLayout line)
-                        modify (LayoutStart :)
-                        modify (token :) --- TODO if token if special ... need to create new Layout
+                        addToken LayoutStart
+                        addToken token
+                        isSpecial token
                       else throwError IndentError
             )
-      undefined
-    else modify (token :)
+    else addToken token
+
+isSpecial ::
+  Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
+  Token ->
+  m ()
+isSpecial = \case
+  KeyWord (Posn l c) s -> case s of
+    "def" -> push (CreateNewLayout c)
+    "if" -> push (CreateNewLayoutUninterrrupt c)
+    "else" -> push (CreateNewLayout c)
+    _ -> return ()
+  _ -> return ()
 
 runLayout input =
   run $
