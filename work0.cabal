@@ -22,6 +22,8 @@ library
     exposed-modules:  Eval
                    , ScriptA.A
                    , ScriptA.B
+                   , ScriptB.A
+                   , ScriptB.Stack
                    ,  Name 
                    , Control.Effect.Store
                    , Control.Effect.Env
