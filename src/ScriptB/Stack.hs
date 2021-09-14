@@ -92,6 +92,7 @@ data LayoutError
   | NeverHappened
   | IndentError
   | CollapsToIfError
+  | LayoutUninterrrupt
   deriving (Show)
 
 getTokenPos :: Token -> Posn
@@ -172,10 +173,25 @@ insertLayout token = do
             )
     else addToken token
 
-collapsToIf :: Has (State LayoutStack :+: Error LayoutError) sig m => m ()
+collapsToColumn :: Has (State LayoutStack :+: State Output :+: Error LayoutError) sig m => Int -> m ()
+collapsToColumn c = do
+  v <- layoutStack <$> get
+  res <- peek
+  case res of
+    Nothing -> throwError IndentError
+    Just lay -> case lay of
+      Layout NewLayoutUninterrrupt _ -> throwError LayoutUninterrrupt
+      Layout _ column ->
+        if c == column
+          then undefined
+          else pop >> addToken LayoutEnd >> collapsToColumn c
+      _ -> pop >> addToken LayoutEnd >> collapsToColumn c
+
+collapsToIf :: Has (State LayoutStack :+: State Output :+: Error LayoutError) sig m => m ()
 collapsToIf = do
   v <- layoutStack <$> get
   res <- pop
+  addToken LayoutEnd
   case res of
     Nothing -> throwError CollapsToIfError
     Just lay -> case lay of
