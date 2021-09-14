@@ -132,11 +132,12 @@ insertLayout ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
   Token ->
   m ()
-insertLayout EOF = do
-  v <- layoutStack <$> get
-  if v == [Layout NewLayout 1]
-    then modify (LayoutEnd :)
-    else throwError LayoutNotMatch
+insertLayout EOF = collapsToColumn 1
+--  do
+-- v <- layoutStack <$> get
+-- if v == [Layout NewLayout 1]
+--   then modify (LayoutEnd :)
+--   else throwError LayoutNotMatch
 insertLayout token = do
   let Posn line column = getTokenPos token
   b <- isNewLine line
@@ -212,10 +213,20 @@ isSpecial = \case
     _ -> return ()
   _ -> return ()
 
-runLayout input =
+runLayout inputs =
   run $
     runState initLayout $
       runState initOutput $
         runLine 0 $
           runError @LayoutError $
-            insertLayout input
+            mapM insertLayout inputs
+
+test :: IO ()
+test = do
+  con <- readFile "src/ScriptB/test.txt"
+  print con
+  case scanner con of
+    Left s -> print s
+    Right tos -> do
+      print tos
+      print $ runLayout tos
