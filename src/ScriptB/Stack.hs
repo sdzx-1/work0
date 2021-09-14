@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
@@ -37,7 +38,7 @@ data LayoutClass
   | ElseLayout
   | NewLayout
   | NewLayoutUninterrrupt
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- type Line = Int
 
@@ -47,15 +48,18 @@ data Layout = Layout
   { layoutClass :: LayoutClass,
     layoutColumn :: Int
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
-newtype LayoutState = LayoutState
+newtype LayoutStack = LayoutStack
   { layoutStack :: [Layout]
   }
   deriving (Show)
 
-initLayout :: LayoutState
-initLayout = LayoutState []
+initLayout :: LayoutStack
+initLayout = LayoutStack [Layout NewLayout 1]
+
+initOutput :: Output
+initOutput = [LayoutStart]
 
 data Line (m :: Type -> Type) a where
   IsNewLine :: Int -> Line m Bool
@@ -78,19 +82,42 @@ instance Algebra sig m => Algebra (Line :+: sig) (LineC m) where
         else pure (False <$ ctx)
     R other -> alg (unLineC . hdl) (R other) ctx
 
-type Input = [Token]
-
 type Output = [Token]
 
-data LayoutError = LayoutError
+data LayoutError = LayoutNotMatch
 
-insertLayout :: Has (State LayoutState :+: State Output :+: Error LayoutError :+: Line) sig m => Token -> m ()
-insertLayout = undefined
+getTokenPos :: Token -> Posn
+getTokenPos = \case
+  String p _ -> p
+  Number p _ -> p
+  Separators p _ -> p
+  KeyWord p _ -> p
+  Var p _ -> p
+  _ -> error "never happened"
+
+-- searchUp :: Int -> LayoutStack ->
+
+insertLayout ::
+  Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
+  Token ->
+  m ()
+insertLayout EOF = do
+  v <- layoutStack <$> get
+  if v == [Layout NewLayout 1]
+    then modify (LayoutEnd :)
+    else throwError LayoutNotMatch
+insertLayout token = do
+  let Posn line column = getTokenPos token
+  b <- isNewLine line
+  if b
+    then do
+      undefined
+    else modify (token :)
 
 runLayout input =
   run $
     runState initLayout $
-      runState @Output [] $
+      runState initOutput $
         runLine 0 $
           runError @LayoutError $
             insertLayout input

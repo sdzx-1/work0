@@ -63,7 +63,7 @@ scanner str = reverse <$> (runAlex str $ do
        do 
         tok <- alexMonadScan;
         case tok of 
-           EOF -> return res 
+           EOF -> return (EOF:res) 
            _ -> loop $! (tok : res)
   loop [])
 
