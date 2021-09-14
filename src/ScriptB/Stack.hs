@@ -37,16 +37,22 @@ data LayoutClass
   | ElseLayout
   | NewLayout
   | NewLayoutUninterrrupt
+  deriving (Show)
 
 -- type Line = Int
 
 -- type Column = Int
 
-data Layout = Layout LayoutClass Int Int
+data Layout = Layout
+  { layoutClass :: LayoutClass,
+    layoutColumn :: Int
+  }
+  deriving (Show)
 
 newtype LayoutState = LayoutState
   { layoutStack :: [Layout]
   }
+  deriving (Show)
 
 initLayout :: LayoutState
 initLayout = LayoutState []
@@ -78,7 +84,7 @@ type Output = [Token]
 
 data LayoutError = LayoutError
 
-insertLayout :: Has (State LayoutState :+: State Output :+: Error LayoutError :+: Line) sig m => Input -> m ()
+insertLayout :: Has (State LayoutState :+: State Output :+: Error LayoutError :+: Line) sig m => Token -> m ()
 insertLayout = undefined
 
 runLayout input =
