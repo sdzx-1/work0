@@ -44,10 +44,13 @@ data LayoutClass
 
 -- type Column = Int
 
-data Layout = Layout
-  { layoutClass :: LayoutClass,
-    layoutColumn :: Int
-  }
+data Layout
+  = Layout
+      { layoutClass :: LayoutClass,
+        layoutColumn :: Int
+      }
+  | CreateNewLayout Int
+  | CreateNewLayoutUninterrrupt Int
   deriving (Show, Eq)
 
 newtype LayoutStack = LayoutStack
@@ -56,10 +59,10 @@ newtype LayoutStack = LayoutStack
   deriving (Show)
 
 initLayout :: LayoutStack
-initLayout = LayoutStack [Layout NewLayout 1]
+initLayout = LayoutStack [CreateNewLayout 0]
 
 initOutput :: Output
-initOutput = [LayoutStart]
+initOutput = []
 
 data Line (m :: Type -> Type) a where
   IsNewLine :: Int -> Line m Bool
