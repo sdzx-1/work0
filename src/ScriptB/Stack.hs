@@ -87,7 +87,11 @@ instance Algebra sig m => Algebra (Line :+: sig) (LineC m) where
 
 type Output = [Token]
 
-data LayoutError = LayoutNotMatch
+data LayoutError
+  = LayoutNotMatch
+  | NeverHappened
+  | IndentError
+  deriving (Show)
 
 getTokenPos :: Token -> Posn
 getTokenPos = \case
@@ -99,6 +103,25 @@ getTokenPos = \case
   _ -> error "never happened"
 
 -- searchUp :: Int -> LayoutStack ->
+
+peek :: Has (State LayoutStack) sig m => m (Maybe Layout)
+peek = do
+  v <- layoutStack <$> get
+  case v of
+    [] -> return Nothing
+    (x : _) -> return (Just x)
+
+pop :: Has (State LayoutStack) sig m => m (Maybe Layout)
+pop = do
+  v <- layoutStack <$> get
+  case v of
+    [] -> return Nothing
+    (x : xs) -> put (LayoutStack xs) >> return (Just x)
+
+push :: Has (State LayoutStack) sig m => Layout -> m ()
+push l = do
+  v <- layoutStack <$> get
+  put (LayoutStack (l : v))
 
 insertLayout ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
@@ -114,6 +137,21 @@ insertLayout token = do
   b <- isNewLine line
   if b
     then do
+      peek
+        >>= ( \case
+                Nothing -> throwError NeverHappened
+                Just lay -> case lay of
+                  Layout lc n -> undefined
+                  CreateNewLayoutUninterrrupt n -> undefined
+                  CreateNewLayout n ->
+                    if line > n
+                      then do
+                        pop
+                        push (Layout NewLayout line)
+                        modify (LayoutStart :)
+                        modify (token :) --- TODO if token if special ... need to create new Layout
+                      else throwError IndentError
+            )
       undefined
     else modify (token :)
 
