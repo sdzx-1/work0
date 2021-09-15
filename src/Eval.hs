@@ -60,7 +60,7 @@ evalExpr = \case
       Elit (LitBool True) -> evalExpr b
       Elit (LitBool False) -> evalExpr c
       _ -> return (Elit LitNull)
-  Return e -> evalExpr e
+  Return e -> evalExpr e >>= throwError . Control
   Var name v -> do
     a <- alloc name
     v' <- evalExpr v
@@ -87,7 +87,12 @@ evalExpr = \case
           n' <- alloc n
           n' .= e
           pure n'
-        binds (zip names1 addrs) (evalExpr e)
+        catchError @EvalError
+          (binds (zip names1 addrs) (evalExpr e))
+          ( \case
+              Control ex -> return ex
+              e -> throwError e
+          )
       BuildInFunction f -> do
         eargs <- mapM evalExpr args
         liftIO (f eargs) >>= \case

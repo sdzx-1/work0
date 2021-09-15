@@ -73,6 +73,7 @@ data EvalError
   | ObjectNotF Name
   | ThisPointStrangeError
   | ObjectSetError
+  | Control Expr
   deriving (Show)
 
 instance Show Expr where
