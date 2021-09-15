@@ -1,11 +1,15 @@
 module ScriptB.C where
 
-import ScriptB.B 
+import Eval
+import ScriptB.B
 
 test :: IO ()
 test = do
   con <- readFile "src/ScriptB/test.txt"
   print con
-  case runCalc con of 
+  case runCalc con of
     Left s -> print s
-    Right ex -> print ex
+    Right ex -> do
+      print ex
+      res <- runEval ex 
+      print res

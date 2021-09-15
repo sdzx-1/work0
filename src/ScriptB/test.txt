@@ -1,13 +1,22 @@
 a = 1
 b = 2
-def test(x,y)
+def test(x,y):
   if a<1:
     logger(y)
   else: 
     logger(y)
+
+def fib(x1,x2,max): 
+  if max < x2: 
+    logger(x2)
+  else: 
+    logger(x2)
+    fib(x2,x1 + x2, max)
 
 while a < 10: 
   logger(a)
   a = a + 1
 
 test(10,100)
+
+fib(1,1,100)

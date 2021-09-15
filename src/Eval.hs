@@ -101,9 +101,12 @@ evalExpr = \case
       o -> throwError $ UnSpportAppFun (show (AppFun v args))
   Assignment name e -> do
     a <- lookupEnv name
-    e' <- evalExpr e
-    maybe (throwError $ VarNotDefined (show name)) (.= e') a
-    return e'
+    case a of
+      Nothing -> evalExpr (Var name e)
+      Just pa -> do
+        e' <- evalExpr e
+        pa .= e'
+        return e'
   BuildInFunction f -> return (BuildInFunction f)
   Skip -> return Skip
   ObjectGet name ls -> do
