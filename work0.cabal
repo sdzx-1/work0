@@ -23,7 +23,9 @@ library
                    , ScriptA.A
                    , ScriptA.B
                    , ScriptB.A
+                   , ScriptB.B
                    , ScriptB.Stack
+                   , ScriptB.C
                    ,  Name 
                    , Control.Effect.Store
                    , Control.Effect.Env

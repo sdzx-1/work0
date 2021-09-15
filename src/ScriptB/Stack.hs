@@ -197,12 +197,11 @@ collapsToIf :: Has (State LayoutStack :+: State Output :+: Error LayoutError) si
 collapsToIf c = do
   v <- layoutStack <$> get
   res <- pop
-  addToken LayoutEnd
   case res of
     Nothing -> throwError CollapsToIfError
     Just lay -> case lay of
       Layout IfLayout column -> if c == column then return () else throwError CollapsToIfError
-      _ -> collapsToIf c
+      _ -> addToken LayoutEnd >> collapsToIf c
 
 isSpecial ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
@@ -223,18 +222,3 @@ runLayout inputs =
         runLine 0 $
           runError @LayoutError $
             mapM insertLayout inputs
-
-test :: IO ()
-test = do
-  con <- readFile "src/ScriptB/test.txt"
-  print con
-  case scanner con of
-    Left s -> print s
-    Right tos -> do
-      print tos
-      let (a, (b, (c, d))) = runLayout tos
-      -- print $ runLayout tos
-      print a
-      forM_ (reverse b) print
-      print c
-      print d
