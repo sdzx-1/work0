@@ -132,12 +132,7 @@ insertLayout ::
   Has (State LayoutStack :+: State Output :+: Error LayoutError :+: Line) sig m =>
   Token ->
   m ()
-insertLayout EOF = collapsToColumn 1
---  do
--- v <- layoutStack <$> get
--- if v == [Layout NewLayout 1]
---   then modify (LayoutEnd :)
---   else throwError LayoutNotMatch
+insertLayout EOF = collapsAll
 insertLayout token = do
   let Posn line column = getTokenPos token
   b <- isNewLine line
@@ -176,6 +171,14 @@ insertLayout token = do
             )
     else addToken token
 
+collapsAll :: Has (State LayoutStack :+: State Output :+: Error LayoutError) sig m => m ()
+collapsAll = do
+  pop
+    >>= ( \case
+            Nothing -> return ()
+            Just _ -> addToken LayoutEnd >> collapsAll
+        )
+
 collapsToColumn :: Has (State LayoutStack :+: State Output :+: Error LayoutError) sig m => Int -> m ()
 collapsToColumn c = do
   v <- layoutStack <$> get
@@ -183,7 +186,7 @@ collapsToColumn c = do
   case res of
     Nothing -> throwError IndentError
     Just lay -> case lay of
-      Layout NewLayoutUninterrrupt _ -> throwError LayoutUninterrrupt
+      Layout NewLayoutUninterrrupt column -> if c == column then return () else throwError LayoutUninterrrupt
       Layout _ column ->
         if c == column
           then return ()
@@ -229,4 +232,9 @@ test = do
     Left s -> print s
     Right tos -> do
       print tos
-      print $ runLayout tos
+      let (a, (b, (c, d))) = runLayout tos
+      -- print $ runLayout tos
+      print a
+      forM_ (reverse b) print
+      print c
+      print d
