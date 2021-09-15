@@ -32,7 +32,7 @@ data Expr
 --   | Throw
 --   | Try
   | Var Name Expr
---   | While
+  | While Expr Expr
   | Elit Lit
   | Fun [Name] Expr    -- function defined
   | AppFun Expr [Expr]   -- functi on App
@@ -81,6 +81,7 @@ instance Show Expr where
   show (For a1 a2 a3 b) = " for: " ++ show a1 ++ show a2 ++ show a3 ++ show b
   show (Return e) = " return: " ++ show e
   show (Var name e) = " var: " ++ show name ++ show e
+  show (While e1 e2) = " while: " ++ show e1 ++ " " ++ show e2
   show (Elit l) = " lit: " ++ show l
   show (Fun args e) = " fun: " ++ show args ++ show e
   show (AppFun e args) = " AppFun: " ++ show e ++ show args

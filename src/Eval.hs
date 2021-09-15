@@ -6,7 +6,6 @@
 
 module Eval where
 
-import ScriptA.B
 import Control.Algebra
 import Control.Carrier.Error.Either
 import Control.Carrier.State.Strict as S
@@ -21,6 +20,7 @@ import qualified Data.List as L
 import Data.Map as Map
 import Data.Maybe
 import Name
+import ScriptA.B
 import System.Directory
 import System.Random
 import Type
@@ -67,6 +67,15 @@ evalExpr = \case
     a .= v'
     varDec name a
     return v'
+  While e1 e2 -> do
+    let go = do
+          evalExpr e1 >>= \case
+            Elit (LitBool True) -> do
+              evalExpr e2
+              go
+            _ -> return ()
+    go
+    return (Elit LitNull)
   Elit lit -> evaLit lit
   Fun names v -> pure (Fun names v)
   AppFun v args -> do

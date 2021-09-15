@@ -18,7 +18,7 @@ $alpha = [a-zA-Z]		-- alphabetic characters
 
 @separators = \; | \+ | \( | \) | \< | \{ | \} | \, | \= | \.| \:
 
-@keywords = var|return|function|for|if|else
+@keywords = var|return|function|for|if|else|while
 
 @string = [$alpha $digit $sign \: \" \']
 

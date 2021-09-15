@@ -16,4 +16,9 @@ person.fun2();
 person.firstName = "yang";
 person.firstName;
 person.a.b.c.d.e.f.g="hello";
-person.a.b.c.d.e.f.g
+person.a.b.c.d.e.f.g;
+var a = 0;
+while ( a < 10) {
+  logger(a);
+  a = a + 1
+}
