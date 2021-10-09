@@ -23,6 +23,7 @@ module Control.Carrier.Store
     runEnv,
     runEnv',
     EnvC (..),
+    InternalError (..),
 
     -- * Env effect
     module Control.Effect.Env,
@@ -30,6 +31,7 @@ module Control.Carrier.Store
 where
 
 import Control.Algebra
+import Control.Carrier.Error.Either
 import Control.Carrier.Reader
 import Control.Carrier.State.Church
 import Control.Effect.Env
@@ -41,7 +43,6 @@ import Control.Monad.IO.Class
 import Data.IntMap as IntMap
 import Data.Map as Map
 import Name
-import Type
 
 newtype PAddr = PAddr Int deriving (Show)
 
@@ -50,19 +51,23 @@ newtype PStore a = PStore (IntMap.IntMap (Maybe a))
 
 type PEnv = Map.Map Name PAddr
 
-
 -- Store carrier
 
-runStore :: Applicative m => Labelled Store (StoreC val) m a -> m (PStore val, a)
-runStore = runState (curry pure) mempty . runStoreC . runLabelled
+runStore :: Monad m => Labelled Store (StoreC val) m a -> m (Either InternalError (PStore val, a))
+runStore = runError @InternalError . runState (curry pure) mempty . runStoreC . runLabelled
 
-runStore' :: Applicative m => IntMap (Maybe val) -> Labelled Store (StoreC val) m a -> m (PStore val, a)
-runStore' im = runState (curry pure) (PStore im) . runStoreC . runLabelled
+runStore' :: Monad m => IntMap (Maybe val) -> Labelled Store (StoreC val) m a -> m (Either InternalError (PStore val, a))
+runStore' im = runError @InternalError . runState (curry pure) (PStore im) . runStoreC . runLabelled
 
-newtype StoreC val m a = StoreC {runStoreC :: StateC (PStore val) m a}
+data InternalError
+  = InternalErrorUnallocatedAddr
+  | InternalErrorUninitializedAddr
+  deriving (Show)
+
+newtype StoreC val m a = StoreC {runStoreC :: StateC (PStore val) (ErrorC InternalError m) a}
   deriving (Applicative, Functor, Monad, MonadIO)
 
-instance (Has (Error EvalError) sig m) => Algebra (Store PAddr val :+: sig) (StoreC val m) where
+instance Algebra sig m => Algebra (Store PAddr val :+: sig) (StoreC val m) where
   alg hdl sig ctx = StoreC $ case sig of
     L op -> case op of
       Alloc _ -> StateC $ \k (PStore heap) -> do
@@ -71,10 +76,10 @@ instance (Has (Error EvalError) sig m) => Algebra (Store PAddr val :+: sig) (Sto
       Assign (PAddr a) v -> ctx <$ modify (\(PStore heap) -> PStore (IntMap.insert a (Just v) heap))
       Fetch (PAddr a) -> StateC $ \k (PStore heap) -> do
         case IntMap.lookup a heap of
-          Nothing -> throwError UnallocatedAddr
-          (Just Nothing) -> throwError UninitializedAddr
+          Nothing -> throwError InternalErrorUnallocatedAddr
+          (Just Nothing) -> throwError InternalErrorUninitializedAddr
           (Just (Just v)) -> k (PStore heap) (v <$ ctx)
-    R other -> alg (runStoreC . hdl) (R other) ctx
+    R other -> alg (runStoreC . hdl) (R (R other)) ctx
 
 -- Env carrier
 

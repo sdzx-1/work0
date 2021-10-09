@@ -4,6 +4,7 @@ module Type where
 
 import Data.Map
 import Name
+import Control.Carrier.Store
 
 data Lit
   = LitStr String
@@ -67,8 +68,7 @@ data EvalError
   | NeverHappened
   | VarNotDefined String
   | UnSpportAppFun String
-  | UnallocatedAddr
-  | UninitializedAddr
+  | StoreError InternalError
   | NotObject Name
   | ObjectNotF Name
   | ThisPointStrangeError
