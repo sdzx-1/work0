@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -53,32 +54,35 @@ type PEnv = Map.Map Name PAddr
 
 -- Store carrier
 
-runStore :: Monad m => Labelled Store (StoreC val) m a -> m (Either InternalError (PStore val, a))
-runStore = runError @InternalError . runState (curry pure) mempty . runStoreC . runLabelled
+runStore :: Monad m => Labelled Store (StoreC val) m a -> m (PStore val, Either InternalError a)
+runStore = runState (curry pure) mempty . runError @InternalError . runStoreC . runLabelled
 
-runStore' :: Monad m => IntMap (Maybe val) -> Labelled Store (StoreC val) m a -> m (Either InternalError (PStore val, a))
-runStore' im = runError @InternalError . runState (curry pure) (PStore im) . runStoreC . runLabelled
+runStore' :: Monad m => IntMap (Maybe val) -> Labelled Store (StoreC val) m a -> m (PStore val, Either InternalError a)
+runStore' im = runState (curry pure) (PStore im) . runError @InternalError . runStoreC . runLabelled
 
 data InternalError
   = InternalErrorUnallocatedAddr
   | InternalErrorUninitializedAddr
   deriving (Show)
 
-newtype StoreC val m a = StoreC {runStoreC :: StateC (PStore val) (ErrorC InternalError m) a}
+newtype StoreC val m a = StoreC {runStoreC :: ErrorC InternalError (StateC (PStore val) m) a}
   deriving (Applicative, Functor, Monad, MonadIO)
 
 instance Algebra sig m => Algebra (Store PAddr val :+: sig) (StoreC val m) where
   alg hdl sig ctx = StoreC $ case sig of
     L op -> case op of
-      Alloc _ -> StateC $ \k (PStore heap) -> do
+      Alloc _ -> do
+        PStore heap <- get @(PStore val)
         let a = maybe 0 ((+ 1) . fst) (IntMap.lookupMax heap)
-        k (PStore (IntMap.insert a Nothing heap)) (PAddr a <$ ctx)
+        put (PStore (IntMap.insert a Nothing heap))
+        pure (PAddr a <$ ctx)
       Assign (PAddr a) v -> ctx <$ modify (\(PStore heap) -> PStore (IntMap.insert a (Just v) heap))
-      Fetch (PAddr a) -> StateC $ \k (PStore heap) -> do
+      Fetch (PAddr a) -> do
+        PStore heap <- get @(PStore val)
         case IntMap.lookup a heap of
           Nothing -> throwError InternalErrorUnallocatedAddr
           (Just Nothing) -> throwError InternalErrorUninitializedAddr
-          (Just (Just v)) -> k (PStore heap) (v <$ ctx)
+          (Just (Just v)) -> pure (v <$ ctx)
     R other -> alg (runStoreC . hdl) (R (R other)) ctx
 
 -- Env carrier

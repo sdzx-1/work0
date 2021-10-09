@@ -169,12 +169,16 @@ getFold (a : ls) (Elit (LitObject pairs)) =
     Just ex -> getFold ls ex
 getFold (a : _) _ = Left (ObjectNotF a)
 
-runEval :: Expr -> IO (Map Name PAddr, Either InternalError (PStore Expr, Either EvalError Expr))
-runEval expr =
-  runEnv
-    . runStore
-    . runError @EvalError
-    $ evalExpr (init' expr)
+runEval :: Expr -> IO (Map Name PAddr, (PStore Expr, Either EvalError Expr))
+runEval expr = do
+  (a, (b, c)) <-
+    runEnv
+      . runStore
+      . runError @EvalError
+      $ evalExpr (init' expr)
+  case c of
+    Left ie -> return (a, (b, Left $ StoreError ie))
+    Right re -> return (a, (b, re))
 
 add :: [Expr] -> IO (Either EvalError Expr)
 add [Elit (LitNum b1), Elit (LitNum b2)] = return $ Right $ Elit $ LitNum (b1 + b2)
@@ -220,20 +224,20 @@ runEval' ::
         (IntMap (Maybe Expr), Map Name PAddr, Expr)
     )
 runEval' env store expr = do
-  (resEnv, internalStore) <-
+  (resEnv, (PStore ps, resExpr)) <-
     runEnv' env
       . runStore' store
       . runError @EvalError
       $ evalExpr expr
-  case internalStore of
+  case resExpr of
     Left internalError -> return $ Left (StoreError internalError)
-    Right (PStore ps, evalResExpr) -> case evalResExpr of
+    Right evalResExpr -> case evalResExpr of
       Left evalError -> return $ Left evalError
-      Right resExpr -> do
+      Right res -> do
         let ls = Map.toList resEnv
             t = Prelude.map (\(name, PAddr i) -> (i, join $ IntMap.lookup i ps)) ls
             nim = IntMap.fromList t
-        return $ Right (nim, resEnv, resExpr)
+        return $ Right (nim, resEnv, res)
 
 -- runEval :: Expr -> IO
 -- test
