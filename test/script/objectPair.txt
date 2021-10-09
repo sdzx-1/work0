@@ -19,6 +19,12 @@ person.a.b.c.d.e.f.g="hello";
 person.a.b.c.d.e.f.g;
 var a = 0;
 while ( a < 10) {
-  logger(a);
+  if (6 < a) { break } else { logger(a) };
   a = a + 1
-}
+};
+
+for(var i = 0; i < 10; i = i + 1) {
+  if(8 < i) {break}
+   else {logger(i)}
+};
+logger(a)

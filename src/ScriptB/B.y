@@ -17,6 +17,7 @@ import ScriptB.Stack
   'if'       { KeyWord _ "if" }
   'else'     { KeyWord _ "else" }
   'while'    { KeyWord _ "while" }
+  'break'    { KeyWord _ "break" }
   'def'      { KeyWord _ "def" }
 
   ';'  { Separators _ ";" }
@@ -66,6 +67,7 @@ Expr :: { Expr }
   | 'if' Expr ':' Expr0 'else' ':' Expr0                   { IfElse $2 $4 $7 }
   | 'return' Expr                                          { Return $2 }
   | 'while' Expr ':' Expr0                                 { While $2 $4 }
+  | 'break'                                                { Break }
   | 'def' Name '(' sep(Name, ',') ')' ':'  Expr0           { Type.Var $2 (Fun $4 $7) }
   | Expr '(' sep(Expr, ',') ')'                            { AppFun $1 $3 }
   | Expr '<' Expr                                          { AppFun ( Elit $ LitSymbol $ Name $ T.pack "<") [$1, $3] }    

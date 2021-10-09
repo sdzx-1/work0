@@ -19,6 +19,7 @@ import qualified Data.Map as M
   'if'       { KeyWord _ "if" }
   'else'     { KeyWord _ "else" }
   'while'    { KeyWord _ "while" }
+  'break'    { KeyWord _ "break" }
 
   ';'  { Separators _ ";" }
   '+'  { Separators _ "+" }
@@ -72,8 +73,9 @@ Expr :: { Expr }
   | 'function' Name '(' sep(Name, ',') ')' '{' Expr0 '}'    { Type.Var $2 (Fun $4 $7)  }
   | Name '.' sep(Name, '.')                                 { ObjectGet $1 $3 }
   | Name '.' sep(Name, '.') '=' Expr                        { ObjectSet $1 $3 $5 }
-  | 'while' '(' Expr ')' '{' Expr0 '}'                        { While $3 $6 }
-  
+  | 'while' '(' Expr ')' '{' Expr0 '}'                      { While $3 $6 }
+  | 'break'                                                 { Break }
+
 Name :: { Name }
   : var { name $ T.pack $1 }
 

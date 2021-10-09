@@ -20,7 +20,7 @@ data Lit
 {- ORMOLU_DISABLE -}
 data Expr
   = Exprs [Expr]
---   | Break
+  | Break
 --   | Catch
 --   | Continue
 --   | DoWhile
@@ -74,11 +74,13 @@ data EvalError
   | ThisPointStrangeError
   | ObjectSetError
   | Control Expr
+  | ControlBreak
   deriving (Show)
 
 instance Show Expr where
   show (BuildInFunction fun) = " build in function"
   show (Exprs ls) = " exprs: " ++ show ls
+  show (Break) = " break: "
   show (For a1 a2 a3 b) = " for: " ++ show a1 ++ show a2 ++ show a3 ++ show b
   show (Return e) = " return: " ++ show e
   show (Var name e) = " var: " ++ show name ++ show e

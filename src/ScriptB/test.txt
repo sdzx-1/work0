@@ -14,7 +14,10 @@ def fib(x1,x2,max):
     fib(x2,x1 + x2, max)
 
 while a < 10: 
-  logger(a)
+  if a < 7:
+    logger(a)
+  else:
+    break
   a = a + 1
 
 test(10,100)

@@ -44,6 +44,7 @@ evalExpr ::
   (Has (Env PAddr :+: Error EvalError) sig m, HasLabelled Store (Store PAddr Expr) sig m, MonadIO m) => Expr -> m Expr
 evalExpr = \case
   Exprs ls -> last <$> mapM evalExpr ls
+  Break -> throwError ControlBreak
   For e1 e2 e3 e4 -> do
     binds @PAddr [] $ do
       evalExpr e1
@@ -54,7 +55,13 @@ evalExpr = \case
                 v4 <- evalExpr e4
                 go v4
               _ -> return val
-      go (Elit LitNull)
+
+      catchError @EvalError
+        (go (Elit LitNull))
+        ( \case
+            ControlBreak -> return (Elit LitNull)
+            e -> throwError e
+        )
   IfElse a b c -> do
     evalExpr a >>= \case
       Elit (LitBool True) -> evalExpr b
@@ -74,7 +81,12 @@ evalExpr = \case
               evalExpr e2
               go
             _ -> return ()
-    go
+    catchError @EvalError
+      go
+      ( \case
+          ControlBreak -> return ()
+          e -> throwError e
+      )
     return (Elit LitNull)
   Elit lit -> evaLit lit
   Fun names v -> pure (Fun names v)
