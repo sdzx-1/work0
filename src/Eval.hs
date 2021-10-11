@@ -45,6 +45,7 @@ evalExpr ::
 evalExpr = \case
   Exprs ls -> last <$> mapM evalExpr ls
   Break -> throwError ControlBreak
+  Continue -> throwError ControlContinue
   For e1 e2 e3 e4 -> do
     binds @PAddr [] $ do
       evalExpr e1
@@ -52,7 +53,13 @@ evalExpr = \case
             evalExpr e2 >>= \case
               Elit (LitBool True) -> do
                 v3 <- evalExpr e3
-                v4 <- evalExpr e4
+                v4 <-
+                  catchError @EvalError
+                    (evalExpr e4)
+                    ( \case
+                        ControlContinue -> return (Elit LitNull)
+                        e -> throwError e
+                    )
                 go v4
               _ -> return val
 
@@ -78,7 +85,12 @@ evalExpr = \case
     let go = do
           evalExpr e1 >>= \case
             Elit (LitBool True) -> do
-              evalExpr e2
+              catchError @EvalError
+                (evalExpr e2)
+                ( \case
+                    ControlContinue -> return (Elit LitNull)
+                    e -> throwError e
+                )
               go
             _ -> return ()
     catchError @EvalError

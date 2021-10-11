@@ -20,6 +20,7 @@ import qualified Data.Map as M
   'else'     { KeyWord _ "else" }
   'while'    { KeyWord _ "while" }
   'break'    { KeyWord _ "break" }
+  'continue' { KeyWord _ "continue" }
 
   ';'  { Separators _ ";" }
   '+'  { Separators _ "+" }
@@ -75,6 +76,7 @@ Expr :: { Expr }
   | Name '.' sep(Name, '.') '=' Expr                        { ObjectSet $1 $3 $5 }
   | 'while' '(' Expr ')' '{' Expr0 '}'                      { While $3 $6 }
   | 'break'                                                 { Break }
+  | 'continue'                                              { Continue }
 
 Name :: { Name }
   : var { name $ T.pack $1 }

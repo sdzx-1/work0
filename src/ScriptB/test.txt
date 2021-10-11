@@ -20,6 +20,14 @@ while a < 10:
     break
   a = a + 1
 
+a = 0
+while a < 10: 
+  a = a + 1
+  if a < 7:
+    continue
+  else:
+    logger(a)
+
 test(10,100)
 
 fib(1,1,100)
