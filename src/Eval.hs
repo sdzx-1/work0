@@ -43,6 +43,7 @@ evaLit = \case
 evalExpr ::
   (Has (Env PAddr :+: Error EvalError) sig m, HasLabelled Store (Store PAddr Expr) sig m, MonadIO m) => Expr -> m Expr
 evalExpr = \case
+  Exprs [] -> return (Elit LitNull)
   Exprs ls -> last <$> mapM evalExpr ls
   Break -> throwError ControlBreak
   Continue -> throwError ControlContinue
