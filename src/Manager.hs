@@ -1,37 +1,37 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass   #-}
+{-# LANGUAGE DeriveGeneric    #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE RecordWildCards  #-}
+{-# LANGUAGE TemplateHaskell  #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators    #-}
 
 module Manager where
 
-import ScriptA.B (runCalc)
-import Command
-import Control.Algebra ((:+:))
-import Control.Carrier.Error.Either
-import Control.Carrier.Fresh.Strict
-import Control.Carrier.Lift
-import Control.Carrier.Reader
-import Control.Carrier.State.Strict
-import Control.Concurrent
-import Control.Concurrent.Chan
-import Control.Concurrent.MVar
-import Control.Concurrent.STM.TChan
-import Control.Effect.Optics
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.STM
-import Control.Tracer
-import Data.IORef
-import Data.Map as Map
-import Data.Text (pack)
+import           Command
+import           Control.Algebra ((:+:))
+import           Control.Carrier.Error.Either
+import           Control.Carrier.Fresh.Strict
+import           Control.Carrier.Lift
+import           Control.Carrier.Reader
+import           Control.Carrier.State.Strict
+import           Control.Concurrent
+import           Control.Concurrent.Chan
+import           Control.Concurrent.MVar
+import           Control.Concurrent.STM.TChan
+import           Control.Effect.Optics
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.STM
+import           Control.Tracer
+import           Data.IORef
+import           Data.Map as Map
+import           Data.Text (pack)
 import qualified Graph as G
-import Name
-import Optics
+import           Name
+import           Optics
+import           ScriptA.B (runCalc)
 
 --- main thread
 
@@ -186,5 +186,5 @@ graphThread :: MVar RunResult -> IO (Either G.GraphError (G.GlobalState, ())) ->
 graphThread result fun = do
   res <- fun
   case res of
-    Left ge -> putMVar result (RunResult (show ge))
+    Left ge       -> putMVar result (RunResult (show ge))
     Right (x0, _) -> putMVar result (RunResult "global State")

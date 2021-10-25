@@ -1,50 +1,43 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Graph where
 
-import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.Lift
-import Control.Carrier.State.Strict as S
-import Control.Carrier.Store hiding ((.=))
-import Control.Concurrent
-import Control.Concurrent.Chan
-import Control.Concurrent.MVar
-import Control.Effect.Optics
-import Control.Effect.State.Labelled
-import Control.Exception.Base (assert)
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Tracer
-import Data.Graph.Inductive
-  ( Gr,
-    Graph (mkGraph),
-    gelem,
-    insEdges,
-    insNode,
-    prettyPrint,
-    topsort,
-  )
-import Data.Graph.Inductive.Dot
-import Data.Graph.Inductive.Example
-import Data.IORef
-import Data.IntMap as IntMap
+import           Control.Algebra
+import           Control.Carrier.Error.Either
+import           Control.Carrier.Lift
+import           Control.Carrier.State.Strict as S
+import           Control.Carrier.Store hiding ((.=))
+import           Control.Concurrent
+import           Control.Concurrent.Chan
+import           Control.Concurrent.MVar
+import           Control.Effect.Optics
+import           Control.Effect.State.Labelled
+import           Control.Exception.Base (assert)
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Tracer
+import           Data.Graph.Inductive (Gr, Graph (mkGraph), gelem, insEdges,
+                     insNode, prettyPrint, topsort)
+import           Data.Graph.Inductive.Dot
+import           Data.Graph.Inductive.Example
+import           Data.IORef
+import           Data.IntMap as IntMap
 import qualified Data.List as L
-import Data.Map as Map
-import Data.Maybe
-import Data.Typeable
+import           Data.Map as Map
+import           Data.Maybe
+import           Data.Typeable
 import qualified Eval
-import GHC.IOArray (newIOArray)
-import Name as N
-import Optics (makeLenses, (^.))
-import System.Directory
-import System.Process
-import Type
+import           GHC.IOArray (newIOArray)
+import           Name as N
+import           Optics (makeLenses, (^.))
+import           System.Directory
+import           System.Process
+import           Type
 
 tmain :: (Show a, Show b, Graph gr) => gr a b -> IO (gr a b)
 tmain a = do
@@ -63,17 +56,17 @@ instance Show (IORef a) where
   show _ = "IORef"
 
 data GlobalState = GlobalState
-  { _graph :: Gr String Int,
-    _evalList :: [Int], -- topsort graph
+  { _graph         :: Gr String Int,
+    _evalList      :: [Int], -- topsort graph
     _handlersState :: Map Int HandlerState
   }
   deriving (Show)
 
 data HandlerState = HandlerState
-  { _handlerEnv :: Map Name PAddr,
+  { _handlerEnv   :: Map Name PAddr,
     _handlerStore :: IntMap (Maybe Expr),
-    _inputs :: Inputs,
-    _output :: Output
+    _inputs       :: Inputs,
+    _output       :: Output
   }
   deriving (Show)
 
@@ -107,13 +100,12 @@ data GraphError
 --- insert a edge of node
 --- name
 --- Expr  get handler , get args, match args with parent's node, get args --- parens't output IORef
-insertNameNodeEdgeExpr ::
-  Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m =>
-  String -> -- name
-  Expr -> -- expr
-  Int -> -- nodeid
-  [(Int, Int)] -> -- (sourceNodeid, edge number label as args position)
-  m ()
+insertNameNodeEdgeExpr :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m
+                       => String -- name
+                       -> Expr -- expr
+                       -> Int -- nodeid
+                       -> [(Int, Int)]  -- (sourceNodeid, edge number label as args position)
+                       -> m ()
 insertNameNodeEdgeExpr name code nodeid edges = do
   -- init code
   let m = Map.empty
@@ -194,7 +186,10 @@ data EvalResult
   | Failed String
   deriving (Show)
 
-runGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m => Chan EvalCommand -> Tracer m TraceRunGraph -> m ()
+runGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m
+         => Chan EvalCommand
+         -> Tracer m TraceRunGraph
+         -> m ()
 runGraph chan tracer =
   sendIO (readChan chan) >>= \case
     Terminal -> do
@@ -206,12 +201,11 @@ runGraph chan tracer =
     RunOnce -> evalGraph (contramap TraceResult tracer) >> runGraph chan tracer
     _ -> undefined
 
-runGraph' ::
-  Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m =>
-  MVar EvalCommand ->
-  MVar EvalResult ->
-  Tracer m TraceRunGraph ->
-  m ()
+runGraph' :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m
+          => MVar EvalCommand
+          -> MVar EvalResult
+          -> Tracer m TraceRunGraph
+          -> m ()
 runGraph' mvar rmvar tracer =
   sendIO (tryTakeMVar mvar) >>= \case
     Nothing -> do
@@ -277,28 +271,27 @@ runGraph' mvar rmvar tracer =
         evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
       LookupNode i -> do
         gs <- S.get @GlobalState
-        case Map.lookup i (gs ^. handlersState) of 
+        case Map.lookup i (gs ^. handlersState) of
           Nothing -> sendIO $ putMVar rmvar (Failed "node not exist")
           Just hs -> sendIO $ putMVar rmvar (Successed $ show hs)
         evalGraph (contramap TraceResult tracer) >> runGraph' mvar rmvar tracer
 
 data TraceGraphEval = GR
   { nodeId :: Int,
-    vars :: [(Name, Expr)],
+    vars   :: [(Name, Expr)],
     result :: Expr
   }
   deriving (Show, Typeable)
 
-traceFun ::
-  Has (State GlobalState :+: Lift IO) sig m =>
-  Map Name PAddr ->
-  IntMap (Maybe Expr) ->
-  Expr ->
-  Tracer m TraceGraphEval ->
-  Int ->
-  m ()
+traceFun :: Has (State GlobalState :+: Lift IO) sig m
+         => Map Name PAddr
+         -> IntMap (Maybe Expr)
+         -> Expr
+         -> Tracer m TraceGraphEval
+         -> Int
+         -> m ()
 traceFun m im e tracer i = do
-  let removeBuildIn Nothing = []
+  let removeBuildIn Nothing  = []
       removeBuildIn (Just e) = [e | not (isBuildIn e)]
 
       varsVal =
@@ -314,7 +307,9 @@ traceFun m im e tracer i = do
         result = e
       }
 
-evalGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m => Tracer m TraceGraphEval -> m ()
+evalGraph :: Has (State GlobalState :+: Error GraphError :+: Lift IO) sig m
+          => Tracer m TraceGraphEval
+          -> m ()
 evalGraph tracer = do
   elist <- use evalList
   forM_ elist $ \i -> do

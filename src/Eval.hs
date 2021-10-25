@@ -1,32 +1,35 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Eval where
 
-import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.State.Strict as S
-import Control.Carrier.Store
-import Control.Concurrent
-import Control.Concurrent.Chan
-import Control.Effect.State.Labelled
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.IntMap as IntMap
+import           Control.Algebra
+import           Control.Carrier.Error.Either
+import           Control.Carrier.State.Strict as S
+import           Control.Carrier.Store
+import           Control.Concurrent
+import           Control.Concurrent.Chan
+import           Control.Effect.State.Labelled
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Data.IntMap as IntMap
 import qualified Data.List as L
-import Data.Map as Map
-import Data.Maybe
-import Name
-import ScriptA.B
-import System.Directory
-import System.Random
-import Type
+import           Data.Map as Map
+import           Data.Maybe
+import           Name
+import           ScriptA.B
+import           System.Directory
+import           System.Random
+import           Type
 
-evaLit ::
-  (Has (Env PAddr :+: Error EvalError) sig m, HasLabelled Store (Store PAddr Expr) sig m, MonadIO m) => Lit -> m Expr
+evaLit :: (Has (Env PAddr :+: Error EvalError) sig m,
+           HasLabelled Store (Store PAddr Expr) sig m,
+           MonadIO m)
+       => Lit
+       -> m Expr
 evaLit = \case
   LitSymbol n -> do
     a <- lookupEnv n
@@ -40,12 +43,15 @@ evaLit = \case
   LitArray arr -> Elit . LitArray <$> mapM evalExpr arr
   other -> pure $ Elit other
 
-evalExpr ::
-  (Has (Env PAddr :+: Error EvalError) sig m, HasLabelled Store (Store PAddr Expr) sig m, MonadIO m) => Expr -> m Expr
+evalExpr :: (Has (Env PAddr :+: Error EvalError) sig m,
+             HasLabelled Store (Store PAddr Expr) sig m,
+             MonadIO m)
+         => Expr
+         -> m Expr
 evalExpr = \case
   Exprs [] -> return (Elit LitNull)
   Exprs ls -> last <$> mapM evalExpr ls
-  Break -> throwError ControlBreak
+  Break    -> throwError ControlBreak
   Continue -> throwError ControlContinue
   For e1 e2 e3 e4 -> do
     binds @PAddr [] $ do
@@ -59,22 +65,22 @@ evalExpr = \case
                     (evalExpr e4)
                     ( \case
                         ControlContinue -> return (Elit LitNull)
-                        e -> throwError e
+                        e               -> throwError e
                     )
                 go v4
-              _ -> return val
+              _                   -> return val
 
       catchError @EvalError
         (go (Elit LitNull))
         ( \case
             ControlBreak -> return (Elit LitNull)
-            e -> throwError e
+            e            -> throwError e
         )
   IfElse a b c -> do
     evalExpr a >>= \case
-      Elit (LitBool True) -> evalExpr b
+      Elit (LitBool True)  -> evalExpr b
       Elit (LitBool False) -> evalExpr c
-      _ -> return (Elit LitNull)
+      _                    -> return (Elit LitNull)
   Return e -> evalExpr e >>= throwError . Control
   Var name v -> do
     a <- alloc name
@@ -90,7 +96,7 @@ evalExpr = \case
                 (evalExpr e2)
                 ( \case
                     ControlContinue -> return (Elit LitNull)
-                    e -> throwError e
+                    e               -> throwError e
                 )
               go
             _ -> return ()
@@ -98,12 +104,12 @@ evalExpr = \case
       go
       ( \case
           ControlBreak -> return ()
-          e -> throwError e
+          e            -> throwError e
       )
     return (Elit LitNull)
-  Elit lit -> evaLit lit
-  Fun names v -> pure (Fun names v)
-  AppFun v args -> do
+  Elit   lit        -> evaLit lit
+  Fun    names v    -> pure (Fun names v)
+  AppFun v     args -> do
     evalExpr v >>= \case
       Fun names1 e -> do
         when (length names1 /= length args) (throwError ArgsNotMatch)
@@ -116,12 +122,12 @@ evalExpr = \case
           (binds (zip names1 addrs) (evalExpr e))
           ( \case
               Control ex -> return ex
-              e -> throwError e
+              e          -> throwError e
           )
       BuildInFunction f -> do
         eargs <- mapM evalExpr args
         liftIO (f eargs) >>= \case
-          Left e -> throwError e
+          Left e  -> throwError e
           Right v -> return v
       o -> throwError $ UnSpportAppFun (show (AppFun v args))
   Assignment name e -> do
@@ -145,7 +151,7 @@ evalExpr = \case
       Elit (LitSymbol name') -> do
         evalExpr (Elit $ LitSymbol name') >>= \case
           p@(Elit (LitObject pairs)) -> case getFold ls p of
-            Left ee -> throwError ee
+            Left ee  -> throwError ee
             Right ex -> return ex
           _ -> throwError (NotObject name')
       _ -> throwError ThisPointStrangeError
@@ -162,7 +168,7 @@ evalExpr = \case
           p@(Elit (LitObject pairs)) -> do
             sv <- evalExpr e
             case setFold sv ls p of
-              Left ee -> throwError ee
+              Left ee  -> throwError ee
               Right ex -> do
                 a <- lookupEnv name'
                 maybe (throwError $ VarNotDefined (show name)) (.= ex) a
@@ -170,7 +176,10 @@ evalExpr = \case
           _ -> throwError (NotObject name')
       _ -> throwError ThisPointStrangeError
 
-setFold :: Expr -> [Name] -> Expr -> Either EvalError Expr
+setFold :: Expr
+        -> [Name]
+        -> Expr
+        -> Either EvalError Expr
 setFold sv [a] (Elit (LitObject pairs)) =
   return (Elit $ LitObject $ Map.insert a sv pairs)
 setFold sv (a : ls) (Elit (LitObject pairs)) = do
@@ -186,7 +195,9 @@ setFold sv (a : ls) (Elit (LitObject pairs)) = do
   return (Elit $ LitObject $ Map.insert a newExpr pairs)
 setFold _ _ _ = Left ObjectSetError
 
-getFold :: [Name] -> Expr -> Either EvalError Expr
+getFold :: [Name]
+        -> Expr
+        -> Either EvalError Expr
 getFold [] e = Right e
 getFold (a : ls) (Elit (LitObject pairs)) =
   case Map.lookup a pairs of
@@ -194,7 +205,8 @@ getFold (a : ls) (Elit (LitObject pairs)) =
     Just ex -> getFold ls ex
 getFold (a : _) _ = Left (ObjectNotF a)
 
-runEval :: Expr -> IO (Map Name PAddr, (PStore Expr, Either EvalError Expr))
+runEval :: Expr
+        -> IO (Map Name PAddr, (PStore Expr, Either EvalError Expr))
 runEval expr = do
   (a, (b, c)) <-
     runEnv
@@ -202,27 +214,31 @@ runEval expr = do
       . runError @EvalError
       $ evalExpr (init' expr)
   case c of
-    Left ie -> return (a, (b, Left $ StoreError ie))
+    Left ie  -> return (a, (b, Left $ StoreError ie))
     Right re -> return (a, (b, re))
 
-add :: [Expr] -> IO (Either EvalError Expr)
+add :: [Expr]
+    -> IO (Either EvalError Expr)
 add [Elit (LitNum b1), Elit (LitNum b2)] = return $ Right $ Elit $ LitNum (b1 + b2)
 add ls = return $ Left $ AddTypeError ls
 
-less :: [Expr] -> IO (Either EvalError Expr)
+less :: [Expr]
+     -> IO (Either EvalError Expr)
 less [Elit (LitNum b1), Elit (LitNum b2)] = return $ Right $ Elit $ LitBool (b1 < b2)
 less ls = return $ Left $ LessTypeError ls
 
 logger :: [Expr] -> IO (Either EvalError Expr)
 logger ls = print ls >> return (Right (head ls))
 
-random' :: [Expr] -> IO (Either EvalError Expr)
+random' :: [Expr]
+        -> IO (Either EvalError Expr)
 random' [Elit (LitNum b1), Elit (LitNum b2)] = do
   v <- randomRIO (b1, b2)
   return $ Right $ Elit $ LitNum v
 random' ls = return $ Left $ LessTypeError ls
 
-skip' :: [Expr] -> IO (Either EvalError Expr)
+skip' :: [Expr]
+      -> IO (Either EvalError Expr)
 skip' _ = return (Right Skip)
 
 -- >>> runEval t
@@ -239,15 +255,10 @@ init' e =
     ]
       ++ [e]
 
-runEval' ::
-  Map Name PAddr ->
-  IntMap (Maybe Expr) ->
-  Expr ->
-  IO
-    ( Either
-        EvalError
-        (IntMap (Maybe Expr), Map Name PAddr, Expr)
-    )
+runEval' :: Map Name PAddr
+         -> IntMap (Maybe Expr)
+         -> Expr
+         -> IO (Either EvalError (IntMap (Maybe Expr), Map Name PAddr, Expr))
 runEval' env store expr = do
   (resEnv, (PStore ps, resExpr)) <-
     runEnv' env
@@ -256,11 +267,11 @@ runEval' env store expr = do
       $ evalExpr expr
   case resExpr of
     Left internalError -> return $ Left (StoreError internalError)
-    Right evalResExpr -> case evalResExpr of
-      Left evalError -> return $ Left evalError
+    Right evalResExpr  -> case evalResExpr of
+      Left evalError   -> return $ Left evalError
       Right res -> do
-        let ls = Map.toList resEnv
-            t = Prelude.map (\(name, PAddr i) -> (i, join $ IntMap.lookup i ps)) ls
+        let ls  = Map.toList resEnv
+            t   = Prelude.map (\(name, PAddr i) -> (i, join $ IntMap.lookup i ps)) ls
             nim = IntMap.fromList t
         return $ Right (nim, resEnv, res)
 
@@ -269,7 +280,7 @@ runEval' env store expr = do
 test = do
   con <- readFile "test/script/objectPair.txt"
   case runCalc con of
-    Left s -> print s
+    Left s  -> print s
     Right e -> do
       res <- runEval e
       print res

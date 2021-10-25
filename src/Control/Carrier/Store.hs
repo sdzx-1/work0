@@ -1,49 +1,45 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
-module Control.Carrier.Store
-  ( -- * Store carrier
-    PAddr (..),
-    PStore (..),
-    PEnv,
-    runStore,
-    runStore',
-    StoreC (StoreC),
-
+module Control.Carrier.Store (
+    -- * Store carrier
+    PAddr (..)
+  , PEnv
+  , PStore (..)
+  , StoreC (StoreC)
+  , runStore
+  , runStore'
     -- * Store effect
-    module Control.Effect.Store,
-
+  , module Control.Effect.Store
     -- * Env carrier
-    runEnv,
-    runEnv',
-    EnvC (..),
-    InternalError (..),
-
+  , EnvC (..)
+  , InternalError (..)
+  , runEnv
+  , runEnv'
     -- * Env effect
-    module Control.Effect.Env,
-  )
-where
+  , module Control.Effect.Env
+  ) where
 
-import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.Reader
-import Control.Carrier.State.Church
-import Control.Effect.Env
-import Control.Effect.Error
-import Control.Effect.Labelled
-import Control.Effect.Store
-import Control.Monad.Fail as Fail
-import Control.Monad.IO.Class
-import Data.IntMap as IntMap
-import Data.Map as Map
-import Name
+import           Control.Algebra
+import           Control.Carrier.Error.Either
+import           Control.Carrier.Reader
+import           Control.Carrier.State.Church
+import           Control.Effect.Env
+import           Control.Effect.Error
+import           Control.Effect.Labelled
+import           Control.Effect.Store
+import           Control.Monad.Fail as Fail
+import           Control.Monad.IO.Class
+import           Data.IntMap as IntMap
+import           Data.Map as Map
+import           Name
 
 newtype PAddr = PAddr Int deriving (Show)
 
@@ -54,10 +50,15 @@ type PEnv = Map.Map Name PAddr
 
 -- Store carrier
 
-runStore :: Monad m => Labelled Store (StoreC val) m a -> m (PStore val, Either InternalError a)
+runStore :: Monad m
+         => Labelled Store (StoreC val) m a
+         -> m (PStore val, Either InternalError a)
 runStore = runState (curry pure) mempty . runError @InternalError . runStoreC . runLabelled
 
-runStore' :: Monad m => IntMap (Maybe val) -> Labelled Store (StoreC val) m a -> m (PStore val, Either InternalError a)
+runStore' :: Monad m
+          => IntMap (Maybe val)
+          -> Labelled Store (StoreC val) m a
+          -> m (PStore val, Either InternalError a)
 runStore' im = runState (curry pure) (PStore im) . runError @InternalError . runStoreC . runLabelled
 
 data InternalError
@@ -80,14 +81,16 @@ instance Algebra sig m => Algebra (Store PAddr val :+: sig) (StoreC val m) where
       Fetch (PAddr a) -> do
         PStore heap <- get @(PStore val)
         case IntMap.lookup a heap of
-          Nothing -> throwError InternalErrorUnallocatedAddr
-          (Just Nothing) -> throwError InternalErrorUninitializedAddr
+          Nothing         -> throwError InternalErrorUnallocatedAddr
+          (Just Nothing)  -> throwError InternalErrorUninitializedAddr
           (Just (Just v)) -> pure (v <$ ctx)
     R other -> alg (runStoreC . hdl) (R (R other)) ctx
 
 -- Env carrier
 
-runEnv :: Applicative m => EnvC m a -> m (Map Name PAddr, a)
+runEnv :: Applicative m
+       => EnvC m a
+       -> m (Map Name PAddr, a)
 runEnv = runState (curry pure) Map.empty . runEnvC
 
 runEnv' :: Applicative m => Map Name PAddr -> EnvC m a -> m (Map Name PAddr, a)

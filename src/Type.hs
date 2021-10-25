@@ -2,9 +2,9 @@
 
 module Type where
 
-import Control.Carrier.Store
-import Data.Map
-import Name
+import           Control.Carrier.Store
+import           Data.Map
+import           Name
 
 data Lit
   = LitStr String
@@ -17,7 +17,6 @@ data Lit
   | LitArray [Expr]
   deriving (Show)
 
-{- ORMOLU_DISABLE -}
 data Expr
   = Exprs [Expr]
   | Break
@@ -44,19 +43,18 @@ data Expr
   | ObjectGet Name [Name]
   -- e: a.b.c = 1
   | ObjectSet Name [Name] Expr
-{- ORMOLU_ENABLE -}
 
 isSkip :: Expr -> Bool
 isSkip Skip = True
-isSkip _ = False
+isSkip _    = False
 
 isBuildIn :: Expr -> Bool
 isBuildIn (BuildInFunction _) = True
-isBuildIn _ = False
+isBuildIn _                   = False
 
 isFun :: Expr -> Bool
 isFun (Fun _ _) = True
-isFun _ = False
+isFun _         = False
 
 data EvalError
   = SymbolNotFind
@@ -80,20 +78,20 @@ data EvalError
 
 instance Show Expr where
   show (BuildInFunction fun) = " build in function"
-  show (Exprs ls) = " exprs: " ++ show ls
-  show (Break) = " break: "
-  show (Continue) = " Continue: "
-  show (For a1 a2 a3 b) = " for: " ++ show a1 ++ show a2 ++ show a3 ++ show b
-  show (Return e) = " return: " ++ show e
-  show (Var name e) = " var: " ++ show name ++ show e
-  show (While e1 e2) = " while: " ++ show e1 ++ " " ++ show e2
-  show (Elit l) = " lit: " ++ show l
-  show (Fun args e) = " fun: " ++ show args ++ show e
-  show (AppFun e args) = " AppFun: " ++ show e ++ show args
-  show (Assignment name e) = " " ++ show name ++ " = " ++ show e
-  show (IfElse a b c) = "if: " ++ show a ++ show b ++ show c
-  show Skip = "skip: "
-  show (ObjectGet name ls) = "ObjectGet: " ++ show name ++ "  " ++ show ls
+  show (Exprs ls)            = " exprs: " ++ show ls
+  show Break                 = " break: "
+  show Continue              = " Continue: "
+  show (For a1 a2 a3 b)      = " for: " ++ show a1 ++ show a2 ++ show a3 ++ show b
+  show (Return e)            = " return: " ++ show e
+  show (Var name e)          = " var: " ++ show name ++ show e
+  show (While e1 e2)         = " while: " ++ show e1 ++ " " ++ show e2
+  show (Elit l)              = " lit: " ++ show l
+  show (Fun args e)          = " fun: " ++ show args ++ show e
+  show (AppFun e args)       = " AppFun: " ++ show e ++ show args
+  show (Assignment name e)   = " " ++ show name ++ " = " ++ show e
+  show (IfElse a b c)        = "if: " ++ show a ++ show b ++ show c
+  show Skip                  = "skip: "
+  show (ObjectGet name ls)   = "ObjectGet: " ++ show name ++ "  " ++ show ls
   show (ObjectSet name ls e) = "ObjectSet: " ++ show name ++ " " ++ show ls ++ " " ++ show e
 
 -- >>> snd <$> runEval t

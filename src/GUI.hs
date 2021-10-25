@@ -1,53 +1,53 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE DeriveFoldable            #-}
+{-# LANGUAGE DeriveFunctor             #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE KindSignatures            #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE RecordWildCards           #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE UndecidableSuperClasses   #-}
 
 module GUI where
 
-import Control.Algebra
-import Control.Carrier.Lift
-import Control.Carrier.Reader
-import Control.Carrier.State.Strict
+import           Control.Algebra
+import           Control.Carrier.Lift
+import           Control.Carrier.Reader
+import           Control.Carrier.State.Strict
 -- import Optics
 
-import Control.Concurrent
-import Control.Effect.Optics (use, (%=), (.=))
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.Dynamic
-import Data.Foldable (forM_)
-import Data.Kind
-import Data.Maybe
-import Data.Text (Text, pack)
-import Data.Typeable
-import Data.Word (Word8)
-import Foreign.Ptr
-import Foreign.StablePtr
-import GHC.Real (Integral)
-import Graph
-import MyLib
-import Optics (ix, (%), (^.), _1, _2)
-import SDL
-import SDL.Font as SF
-import SDL.Framerate
-import SDL.Primitive
-import System.Process
-import Type
-import Widget
+import           Control.Concurrent
+import           Control.Effect.Optics (use, (%=), (.=))
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Data.Dynamic
+import           Data.Foldable (forM_)
+import           Data.Kind
+import           Data.Maybe
+import           Data.Text (Text, pack)
+import           Data.Typeable
+import           Data.Word (Word8)
+import           Foreign.Ptr
+import           Foreign.StablePtr
+import           GHC.Real (Integral)
+import           Graph
+import           MyLib
+import           Optics (_1, _2, ix, (%), (^.))
+import           SDL
+import           SDL.Font as SF
+import           SDL.Framerate
+import           SDL.Primitive
+import           System.Process
+import           Type
+import           Widget
 
 data Body = Body
   { _workPath :: FilePath
@@ -226,14 +226,14 @@ tgeWidget' v path =
 showLit :: Lit -> String
 showLit (LitStr s) = s
 showLit (LitNum d) = show d
-showLit LitNull = "null"
-showLit _ = "unspport"
+showLit LitNull    = "null"
+showLit _          = "unspport"
 
 showExpr :: Expr -> String
-showExpr (Elit l) = showLit l
-showExpr Skip = "skip"
+showExpr (Elit l)  = showLit l
+showExpr Skip      = "skip"
 showExpr (Fun _ _) = "function"
-showExpr _ = "unspport"
+showExpr _         = "unspport"
 
 instance WidgetRender TraceGraphEval where
   renderSelf bp@(P (V2 x y)) w@Widget {..} = do
@@ -314,7 +314,10 @@ initGUI = do
   font <- load "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf" 20
   return (renderer, font, fm, pe, fmap (fmap toDyn) . ge)
 
-appLoop1 :: forall sig m. (UI sig m, MonadIO m) => m ()
+appLoop1 :: forall sig m.
+            (UI sig m,
+             MonadIO m)
+         => m ()
 appLoop1 = go
   where
     go = do

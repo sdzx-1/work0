@@ -2,24 +2,26 @@
 
 module Server where
 
-import Command
-import Control.Concurrent
-import Control.Concurrent.Chan
-import Control.Concurrent.STM
-import Control.Concurrent.STM.TChan
-import Control.Monad.IO.Class
-import Data.IORef
-import Data.Map as Map
-import Manager
-import Network.Wai.Handler.Warp
-import Servant
-import Servant.Server
-import ServerApi
+import           Command
+import           Control.Concurrent
+import           Control.Concurrent.Chan
+import           Control.Concurrent.STM
+import           Control.Concurrent.STM.TChan
+import           Control.Monad.IO.Class
+import           Data.IORef
+import           Data.Map as Map
+import           Manager
+import           Network.Wai.Handler.Warp
+import           Servant
+import           Servant.Server
+import           ServerApi
 
 api1 :: Proxy Api
 api1 = Proxy
 
-server1 :: Chan (Client Command) -> TChan (Client Result) -> Server Api
+server1 :: Chan (Client Command)
+        -> TChan (Client Result)
+        -> Server Api
 server1 comChan resultTChan =
   handler1
     :<|> handler11
@@ -42,20 +44,22 @@ server1 comChan resultTChan =
             then return result
             else retry
 
-    handler1 g = fun (CreateGraph g)
-    handler11 = fun LookupAllGraph
-    handler12 i = fun (GraphCommand i LookupGraph)
-    handler13 i = fun (GraphCommand i LookupAllNodes)
-    handler14 i n = fun (NodeCommand i n LookupNode)
-    handler2 i = fun (RemoveGraph i)
-    handler3 i n = fun (GraphCommand i (InsertNode n))
-    handler4 i n s = fun (NodeCommand i n (LookUpVar s))
+    handler1 g              = fun (CreateGraph g)
+    handler11               = fun LookupAllGraph
+    handler12 i             = fun (GraphCommand i LookupGraph)
+    handler13 i             = fun (GraphCommand i LookupAllNodes)
+    handler14 i n           = fun (NodeCommand i n LookupNode)
+    handler2 i              = fun (RemoveGraph i)
+    handler3 i n            = fun (GraphCommand i (InsertNode n))
+    handler4 i n s          = fun (NodeCommand i n (LookUpVar s))
     handler5 i n (Script s) = fun (NodeCommand i n (EvalExpr s))
 
 api :: Proxy ServerApi
 api = Proxy
 
-server :: Chan (Client Command) -> TChan (Client Result) -> Server ServerApi
+server :: Chan (Client Command)
+       -> TChan (Client Result)
+       -> Server ServerApi
 server comChan resultTChan clientid comd =
   liftIO $ do
     writeChan comChan (Client clientid comd)
@@ -67,7 +71,9 @@ server comChan resultTChan clientid comd =
         then return result
         else retry
 
-app :: Chan (Client Command) -> TChan (Client Result) -> Application
+app :: Chan (Client Command)
+    -> TChan (Client Result)
+    -> Application
 app c r = serve api1 (server1 c r)
 
 main :: IO ()

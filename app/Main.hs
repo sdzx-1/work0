@@ -9,5 +9,5 @@ main = do
   putStrLn "start demo"
   -- start
   -- G.main
-  -- N.start
-  S.main
+  N.start
+  -- S.main

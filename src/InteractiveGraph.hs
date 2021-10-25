@@ -1,27 +1,27 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE TupleSections    #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators    #-}
 
 module InteractiveGraph where
 
-import Control.Algebra
-import Control.Carrier.Error.Either
-import Control.Carrier.Fresh.Strict
-import Control.Carrier.Graph
-import Control.Carrier.Lift
-import Control.Effect.Graph
-import Control.Effect.Labelled
-import Control.Effect.State.Labelled (HasLabelled)
-import Control.Monad
-import Data.Either
-import Data.Graph.Inductive (Gr)
-import Data.Graph.Inductive.Dot
+import           Control.Algebra
+import           Control.Carrier.Error.Either
+import           Control.Carrier.Fresh.Strict
+import           Control.Carrier.Graph
+import           Control.Carrier.Lift
+import           Control.Effect.Graph
+import           Control.Effect.Labelled
+import           Control.Effect.State.Labelled (HasLabelled)
+import           Control.Monad
+import           Data.Either
+import           Data.Graph.Inductive (Gr)
+import           Data.Graph.Inductive.Dot
 import qualified Data.List as L
-import Graph (tmain)
-import System.Process
-import Text.Read
+import           Graph (tmain)
+import           System.Process
+import           Text.Read
 
 data ErrorType
   = Finish
@@ -29,13 +29,16 @@ data ErrorType
   | E2
   deriving (Show)
 
-parse :: (Has (Error ErrorType) sig m, Read a) => String -> m a
+parse :: (Has (Error ErrorType) sig m,
+          Read a)
+      => String
+      -> m a
 parse a = either (throwError . ArgsParseError . ((a ++ " ") ++)) return $ readEither a
 
 data Node a = Node
-  { nodeId :: Int,
+  { nodeId       :: Int,
     sourceNodeId :: [Int],
-    code :: a
+    code         :: a
   }
   deriving (Show)
 
@@ -43,16 +46,14 @@ helpCode :: [Int] -> String
 helpCode ls =
   let k = case ls of
         [] -> "input"
-        _ -> L.intercalate "," $ map (("node" ++) . show) ls
+        _  -> L.intercalate "," $ map (("node" ++) . show) ls
    in "function handler(" ++ k ++ "){\n \n \n}"
 
-eval' ::
-  ( Has (Lift IO :+: Error ErrorType) sig m,
-    HasLabelled Graph (Graph Int Int) sig m,
-    Has (Fresh) sig m
-  ) =>
-  String ->
-  m ()
+eval' :: (Has (Lift IO :+: Error ErrorType) sig m,
+         HasLabelled Graph (Graph Int Int) sig m,
+         Has Fresh sig m)
+      => String
+      -> m ()
 eval' l = do
   case words l of
     "show" : _ -> getGraph >>= sendIO . void . tmain
@@ -80,19 +81,17 @@ eval' l = do
     "finish" : _ -> throwError Finish
     _ -> sendIO $ print "unsport command"
 
-run' ::
-  ( Has (Lift IO :+: Error ErrorType) sig m,
-    HasLabelled Graph (Graph Int Int) sig m,
-    Has (Fresh) sig m
-  ) =>
-  m ()
+run' :: (Has (Lift IO :+: Error ErrorType) sig m,
+        HasLabelled Graph (Graph Int Int) sig m,
+        Has Fresh sig m)
+     => m ()
 run' = do
   l <- sendIO getLine
   catchError @ErrorType
     (eval' l)
     ( \case
         ArgsParseError s -> sendIO $ print $ "ArgsParseError: " ++ s
-        e -> throwError e
+        e                -> throwError e
     )
   run'
 
